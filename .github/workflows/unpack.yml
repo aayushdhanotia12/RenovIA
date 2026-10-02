@@ -1,0 +1,34 @@
+# Unpacks a code zip uploaded through the GitHub web page ("Add file > Upload files")
+# into the repo root, then deletes the zip. Use it to drop in the real Kober swatches
+# (catalog/kober/swatches/...) or sample photos from a zip.
+name: Unpack uploaded zip
+on:
+  push:
+    branches: [main]
+    paths: ["*.zip"]
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack into the repo root
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for z in *.zip; do
+            tmp=$(mktemp -d)
+            unzip -q "$z" -d "$tmp"
+            src="$tmp"
+            entries=("$tmp"/*)
+            if [ ${#entries[@]} -eq 1 ] && [ -d "${entries[0]}" ]; then src="${entries[0]}"; fi
+            # Never let an upload overwrite the workflows themselves.
+            rsync -a --exclude '.github/' "$src"/ ./
+            git rm -q "$z"
+          done
+          git config user.name "renovai-bot"
+          git config user.email "renovai-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "Unpack uploaded code" || echo "nothing to commit"
+          git push

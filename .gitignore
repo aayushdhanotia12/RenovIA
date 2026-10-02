@@ -1,0 +1,8 @@
+.env
+data/
+.cache/
+web/node_modules/
+__pycache__/
+*.pyc
+samples/out/e2e/
+samples/out/compare/

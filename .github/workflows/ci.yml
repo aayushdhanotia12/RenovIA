@@ -1,0 +1,74 @@
+# Tests, web build and the browser smoke test on every push to main.
+# The result is written to status/ci.json on the ci-status branch, where Claude reads it.
+name: CI
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["runs/**", "requests/**", "status/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - uses: actions/setup-node@v4
+        with: {node-version: "20"}
+      - name: Install
+        run: |
+          python -m pip install -q -r requirements-dev.txt
+          cd web && npm install --no-audit --no-fund
+      - name: Python tests
+        id: py
+        run: |
+          set -o pipefail
+          python -m unittest discover -s backend/tests -t . 2>&1 | tee /tmp/py.txt
+      - name: Web build and typecheck
+        id: web
+        run: |
+          set -o pipefail
+          cd web
+          npm run build 2>&1 | tee /tmp/web.txt
+          npm run typecheck 2>&1 | tee -a /tmp/web.txt
+      - name: Browser smoke test
+        id: e2e
+        env:
+          RENOVAI_STAFF_TOKEN: ci-token
+        run: |
+          set -o pipefail
+          python -m playwright install --with-deps chromium > /dev/null
+          RENOVAI_DATA_DIR=/tmp/e2e-data python -m uvicorn --factory backend.app.main:create_app --port 8765 &
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8765/api/health && break; sleep 1; done
+          python web/e2e/smoke.py http://127.0.0.1:8765 /tmp/e2e 2>&1 | tee /tmp/e2e.txt
+      - name: Commit the rebuilt web app
+        if: success()
+        run: |
+          git config user.name "renovai-bot"
+          git config user.email "renovai-bot@users.noreply.github.com"
+          git add web/dist
+          git diff --cached --quiet || { git commit -m "Rebuild web/dist [skip ci]"; git push; }
+      - name: Publish status for Claude
+        if: always()
+        env:
+          PY: ${{ steps.py.outcome }}
+          WEB: ${{ steps.web.outcome }}
+          E2E: ${{ steps.e2e.outcome }}
+        run: |
+          set +e
+          mkdir -p /tmp/status/status /tmp/status/status/e2e
+          python - <<'PY'
+          import json, os, pathlib
+          def tail(p):
+              f = pathlib.Path(p)
+              return f.read_text(errors="replace")[-6000:] if f.exists() else ""
+          json.dump({"sha": os.environ["GITHUB_SHA"], "python": os.environ["PY"], "web": os.environ["WEB"],
+                     "e2e": os.environ["E2E"], "python_log": tail("/tmp/py.txt"), "web_log": tail("/tmp/web.txt"),
+                     "e2e_log": tail("/tmp/e2e.txt")}, open("/tmp/status/status/ci.json", "w"), indent=1)
+          PY
+          cp /tmp/e2e/*.png /tmp/status/status/e2e/ 2>/dev/null
+          cd /tmp/status && git init -q -b ci-status && git add -A
+          git -c user.name=renovai-bot -c user.email=renovai-bot@users.noreply.github.com commit -qm "CI status for $GITHUB_SHA"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-status

@@ -1,0 +1,38 @@
+# Runs the live models: SAM 3 (fal.ai) finds the surfaces, Claude describes the kitchen
+# and picks Kober finishes per style, the renderer draws them. Triggered by pushing
+# requests/remodel.json; results are committed to runs/<run_id>/.
+# Needs repository secrets ANTHROPIC_API_KEY and FAL_KEY.
+name: Remodel photos with live models
+on:
+  push:
+    branches: [main]
+    paths: ["requests/remodel.json"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: remodel
+jobs:
+  remodel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: python -m pip install -q -r requirements.txt
+      - name: Remodel
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FAL_KEY: ${{ secrets.FAL_KEY }}
+        run: |
+          set -o pipefail
+          run_id=$(python -c "import json;print(json.load(open('requests/remodel.json')).get('run_id','run'))")
+          mkdir -p "runs/$run_id"
+          python -m backend.tools.remodel --request requests/remodel.json 2>&1 | tee "runs/$run_id/log.txt"
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name "renovai-bot"
+          git config user.email "renovai-bot@users.noreply.github.com"
+          git add runs samples
+          git diff --cached --quiet || { git commit -m "Remodel results [skip ci]"; git pull --rebase; git push; }

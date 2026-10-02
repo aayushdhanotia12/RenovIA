@@ -1,0 +1,10 @@
+# Runtime. Minimum versions the prototype was built and tested with (2 Oct 2026).
+starlette>=1.0
+uvicorn>=0.46
+pydantic>=2.13
+python-multipart>=0.0.26
+httpx>=0.28            # HTTP client for the model APIs and Starlette's test client (httpx2 also works)
+numpy>=2.4
+opencv-python-headless>=4.13
+pillow>=12.2
+openpyxl>=3.1         # reads the team's price sheet (.xlsx); Google Sheets CSV exports need nothing extra

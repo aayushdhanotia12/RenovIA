@@ -1,0 +1,55 @@
+{
+ "8000020a39010185": {
+  "name": "Kober catalogue p7 kitchen",
+  "width": 1920,
+  "height": 1200,
+  "surfaces": [
+   {
+    "surface_class": "countertop",
+    "mask": "kober_p7_countertop.png",
+    "score": 0.93,
+    "quad": [
+     [
+      186,
+      668
+     ],
+     [
+      2248,
+      829
+     ],
+     [
+      1580,
+      985
+     ],
+     [
+      0,
+      711
+     ]
+    ]
+   },
+   {
+    "surface_class": "backsplash",
+    "mask": "kober_p7_backsplash.png",
+    "score": 0.9,
+    "quad": [
+     [
+      295,
+      499
+     ],
+     [
+      1866,
+      343
+     ],
+     [
+      1866,
+      799
+     ],
+     [
+      295,
+      676
+     ]
+    ]
+   }
+  ]
+ }
+}
