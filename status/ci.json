@@ -1,0 +1,9 @@
+{
+ "sha": "ebc935700664e22094a84fbc78c921b193312a23",
+ "python": "success",
+ "web": "success",
+ "e2e": "success",
+ "python_log": "/home/runner/work/RenovIA/RenovIA/backend/tests/test_api.py:9: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n  from starlette.testclient import TestClient\n................................................................................\n----------------------------------------------------------------------\nRan 80 tests in 57.510s\n\nOK\n",
+ "web_log": "\n> renovai-web@0.1.0 build\n> node build.cjs\n\n\n  dist/app.js      322.4kb\n  dist/app.js.map    1.3mb\n\n\u26a1 Done in 70ms\n\n> renovai-web@0.1.0 typecheck\n> tsc --noEmit\n\n",
+ "e2e_log": "smoke test passed; screenshots in /tmp/e2e\n"
+}
