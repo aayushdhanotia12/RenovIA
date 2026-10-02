@@ -1,0 +1,29 @@
+{
+  "status": "PLACEHOLDER",
+  "warning": "Invented round numbers so the prototype can show a quote. These are not Kober prices and not your team's rates. Replace this file with the real price list before showing a quote to a customer.",
+  "currency": "MXN",
+  "tax": {"name": "IVA", "rate_bp": 1600, "status": "to confirm: market and whether prices are shown with IVA"},
+  "waste_allowance_bp": {"countertop": 1000, "splash": 1000, "note": "10% as instructed on 28 Sep; applied to every measured run before choosing standard pieces."},
+  "countertop_per_metre_minor": {
+    "basik": 120000,
+    "estandar": 180000,
+    "premium": 240000,
+    "premium_plus": 280000
+  },
+  "default_category_by_line": {"estilo": "premium_plus", "diseno": "estandar", "basik": "basik"},
+  "profile_factor_bp": {"slim": 10000, "original": 10000, "original_q": 10500, "essence": 12000, "basik": 10000},
+  "width_factor_bp": [
+    {"max_width_mm": 550, "factor_bp": 8500},
+    {"max_width_mm": 645, "factor_bp": 10000},
+    {"max_width_mm": 800, "factor_bp": 13500},
+    {"max_width_mm": 1000, "factor_bp": 16000}
+  ],
+  "splash_per_m2_minor": {"basik": 70000, "estandar": 90000, "premium": 120000, "premium_plus": 140000},
+  "labour_minor": {
+    "countertop_install_per_metre": 45000,
+    "splash_install_per_m2": 25000,
+    "sink_undermount_each": 150000,
+    "join_each": 60000
+  },
+  "booking_fee_minor": {"SELF": 30000, "MANAGED": 50000}
+}

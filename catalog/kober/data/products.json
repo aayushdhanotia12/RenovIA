@@ -1,0 +1,81 @@
+{
+  "source": "Kober catalogue CATKBR25AGO26 (Aug 2026), Zapopan, Jalisco",
+  "units": "All sizes are integer millimetres.",
+  "profiles": [
+    {"id": "slim", "name": "Slim", "thickness_mm": 20, "display": "2 cm", "series": ["freedom", "evolution"], "finish_lines": ["estilo", "diseno"], "page": 8},
+    {"id": "original", "name": "Original", "thickness_mm": 40, "display": "4 cm", "series": ["freedom", "evolution"], "finish_lines": ["estilo", "diseno"], "page": 8, "note": "Rounded front corners."},
+    {"id": "original_q", "name": "Original Q", "thickness_mm": 40, "display": "4 cm", "series": ["freedom", "evolution"], "finish_lines": ["estilo", "diseno"], "page": 8, "note": "Square front edge."},
+    {"id": "essence", "name": "Essence", "thickness_mm": 60, "display": "6 cm", "series": ["freedom", "evolution"], "finish_lines": ["estilo", "diseno"], "page": 8},
+    {"id": "basik", "name": "Basi-K", "thickness_mm": 33, "display": "3.3 cm", "series": ["basik"], "finish_lines": ["basik"], "page": 10}
+  ],
+  "series": [
+    {"id": "freedom", "name": "Kober Freedom", "integrated_upstand": false, "page": 5, "note": "No integrated upstand; low (7 cm) or high (60 cm) upstands sold separately."},
+    {"id": "evolution", "name": "Kober Evolution", "integrated_upstand": true, "page": 7},
+    {"id": "basik", "name": "Kober Basi-K", "integrated_upstand": true, "page": 10, "note": "Economy line."}
+  ],
+  "countertop_sizes": {
+    "page": 26,
+    "standard_widths_mm": [450, 500, 550, 645],
+    "standard_lengths_mm": [2400, 3000, 3600],
+    "short_lengths_mm": [1200, 1800],
+    "short_lengths_rule": "Estilo finishes only, and only at 645 mm width (pages 26 and 30).",
+    "wide_widths_mm": [700, 800, 900, 1000],
+    "wide_lengths_mm": [2400, 3600],
+    "basik_lengths_mm": [2400]
+  },
+  "bar_sizes": {
+    "page": 31,
+    "note": "Same widths and lengths as countertops; Essence bars are not made at 3000 mm.",
+    "large_format": {"page": 32, "max_width_mm": 1200, "max_length_mm": 4100, "rule": "1100 and 1200 mm widths only in Essence; 4100 mm length in Slim, Essence, Original Q and Original."}
+  },
+  "splash_panels": {
+    "page": 15,
+    "name": "Spläsh",
+    "heights_mm": [600, 1200],
+    "lengths_mm": [2400, 3600],
+    "thickness_mm": 6,
+    "material": "MDF",
+    "note": "Same finish as the countertop or a contrasting one."
+  },
+  "upstands_freedom": {
+    "page": 22,
+    "items": [
+      {"id": "upstand_low", "name": "Respaldo bajo", "height_mm": 70, "lengths_mm": [2400, 3000, 3600], "thickness_mm": 16},
+      {"id": "upstand_high", "name": "Respaldo alto", "height_mm": 600, "lengths_mm": [2400, 3000, 3600], "thickness_mm": 16}
+    ]
+  },
+  "boards": {
+    "page": 40,
+    "thickness_mm": 18,
+    "sizes_1c_mm": [[1200, 2400]],
+    "sizes_2c_mm": [[600, 2400], [1200, 1200], [1200, 2400]]
+  },
+  "sinks_in_stock": {
+    "page": 39,
+    "service": "Undermount installation by Kober, 3-year warranty; minimum 180 mm from the edge (page 38).",
+    "items": [
+      {"id": "singola_piccola", "name": "Singola Piccola", "size_mm": [410, 500], "depth_mm": 200, "colours": ["Blanco latte", "Titanio", "Nero Profundo"]},
+      {"id": "singola_media", "name": "Singola Media", "size_mm": [560, 500], "depth_mm": 200, "colours": ["Blanco latte", "Titanio", "Nero Profundo"]},
+      {"id": "singola_grande", "name": "Singola Grande", "size_mm": [760, 500], "depth_mm": 200, "colours": ["Blanco latte", "Titanio", "Nero Profundo"]},
+      {"id": "due_media", "name": "Due Media", "size_mm": [860, 510], "depth_mm": 200, "colours": ["Blanco latte", "Nero Profundo"]},
+      {"id": "singola_massima", "name": "Singola Massima", "size_mm": [840, 550], "depth_mm": 250, "colours": ["Blanco latte", "Titanio", "Nero Profundo"]},
+      {"id": "due_massima", "name": "Due Massima", "size_mm": [840, 560], "depth_mm": 235, "colours": ["Blanco latte", "Titanio", "Nero Profundo"]},
+      {"id": "602_18_oem", "name": "602-18/OEM", "size_mm": [827, 464], "depth_mm": 228, "finish": "Cepillado", "min_countertop_width_mm": 700},
+      {"id": "2318", "name": "2318-18 / 2318-22", "size_mm": [590, 453], "depth_mm": 228, "finish": "Cepillado", "min_countertop_width_mm": 700},
+      {"id": "502_hd", "name": "502 HD", "size_mm": [792, 460], "depth_mm": 228, "finish": "Cepillado"},
+      {"id": "cs300_7", "name": "CS300-7", "size_mm": [600, 460], "depth_mm": 180, "finish": "Satinado"},
+      {"id": "cs200", "name": "CS200", "size_mm": [550, 430], "depth_mm": 200, "finish": "Satinado"},
+      {"id": "cs100_8", "name": "CS100-8", "size_mm": [480, 430], "depth_mm": 200, "finish": "Satinado"},
+      {"id": "kud3318", "name": "KUD3318-2/8", "size_mm": [819, 470], "depth_mm": 203, "finish": "Cepillado"},
+      {"id": "kud3120", "name": "KUD3120-3", "size_mm": [807, 520], "depth_mm": 228, "finish": "Cepillado"}
+    ]
+  },
+  "rules": [
+    {"page": 30, "text": "Essence bars are not made at 3000 mm."},
+    {"page": 30, "text": "Pieces wider than 645 mm are not made at 3000 mm in any profile."},
+    {"page": 30, "text": "1200 and 1800 mm lengths only in Estilo finishes at 645 mm width."},
+    {"page": 30, "text": "Porfido Nero is not made in the Slim profile."},
+    {"page": 26, "text": "Basi-K is only made at 2400 mm length."},
+    {"page": 30, "text": "Longitudinal reinforcement suggested for bars over 3600 mm long and 900 mm wide."}
+  ]
+}
