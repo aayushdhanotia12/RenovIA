@@ -166,7 +166,8 @@ def create_app(settings: Settings | None = None) -> Starlette:
         surfaces = project["surfaces"] or {}
         before = surfaces.get(s.photo_id) or {}
         surfaces[s.photo_id] = {"confirmed": True, "items": items, "objects": before.get("objects", []),
-                                "detector": before.get("detector", "manual")}
+                                "detector": before.get("detector", "manual"),
+                                "light_file": before.get("light_file"), "lighting": before.get("lighting")}
         store.update_project(who, pid, surfaces=surfaces)
         return JSONResponse(surfaces[s.photo_id])
 

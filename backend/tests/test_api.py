@@ -84,6 +84,8 @@ class ApiFlowTests(unittest.TestCase):
         self.assertLess(quote["estimate"]["low"]["minor"], quote["estimate"]["high"]["minor"])
         self.assertEqual(quote["price_list_status"], "PLACEHOLDER")
         self.assertEqual(dsg["model_versions"]["renderer"], "composite-v3")
+        # The sample photo has a stored lighting-model result, so the render used it and says so.
+        self.assertEqual(dsg["model_versions"]["lighting"], "mock:stored-marigold-iid-lighting")
         self.assertEqual(c.get(dsg["manifest"]["image"]["url"]).status_code, 200)
 
         events = c.get(f"/api/jobs/{job['id']}/events").text

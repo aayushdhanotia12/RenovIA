@@ -35,6 +35,10 @@ class Settings(BaseModel):
     fal_base_url: str = "https://fal.run"
     sam3_endpoint: str = "fal-ai/sam-3/image"
     sam3_min_score: float = 0.35
+    # Our own model worker (workers/gpu): open models we run ourselves on a cloud GPU or a Mac.
+    # Empty = no worker; the renderer then estimates the light from the photo itself.
+    worker_url: str = ""
+    worker_token: str = ""
 
     staff_token: str = "change-me"
     max_upload_mb: int = 25

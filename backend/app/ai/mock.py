@@ -70,6 +70,26 @@ class MockDetector:
         return out
 
 
+class MockLighting:
+    """Stored lighting-model output for known sample photos (samples/fixtures); None otherwise,
+    in which case the renderer estimates the light from the photo, as it does without a worker."""
+
+    model_id = "mock:stored-marigold-iid-lighting"
+
+    def estimate(self, image_bgr: np.ndarray) -> np.ndarray | None:
+        index = FIXTURES / "index.json"
+        if not index.exists():
+            return None
+        key = photo_key(image_bgr)
+        best = min(json.loads(index.read_text()).items(), key=lambda kv: _hamming(kv[0], key), default=None)
+        if best is None or _hamming(best[0], key) > 6 or not best[1].get("light"):
+            return None
+        path = FIXTURES / best[1]["light"]["file"]
+        if not path.exists():
+            return None
+        return np.load(path)["shading"].astype(np.float32)
+
+
 class MockDescriber:
     model_id = "mock:describer"
 

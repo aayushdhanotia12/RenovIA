@@ -41,5 +41,13 @@ class FinishSuggester(Protocol):
     def suggest(self, description: dict | None, style: str, budget: str | None, language: str) -> list[dict]: ...
 
 
+class LightingModel(Protocol):
+    model_id: str
+
+    def estimate(self, image_bgr: np.ndarray) -> np.ndarray | None:
+        """The photo's diffuse shading: the room's light without any surface's colour or shine,
+        as linear RGB (any size; the renderer resizes it). None when there is no estimate."""
+
+
 class ModelError(RuntimeError):
     """A model call failed or returned something unusable. Retry or fall back."""

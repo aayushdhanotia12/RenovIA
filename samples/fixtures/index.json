@@ -82,6 +82,11 @@
     "mask": "kober_p7_object_potted_plant.png",
     "score": 0.88
    }
-  ]
+  ],
+  "light": {
+   "file": "kober_p7_light.npz",
+   "model": "prs-eth/marigold-iid-lighting-v1-1",
+   "note": "stored output of the 5 Oct 2026 model test run (1280 px input, 4 steps, saved at half size)"
+  }
  }
 }

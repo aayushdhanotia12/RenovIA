@@ -260,6 +260,18 @@ def split_glare(shading: np.ndarray, cap: float) -> tuple[np.ndarray, np.ndarray
     return diffuse.astype(np.float32), (shading - diffuse).astype(np.float32)
 
 
+def light_from_model(shading_rgb: np.ndarray, photo_bgr: np.ndarray) -> np.ndarray:
+    """A lighting model's diffuse shading (linear RGB, any size) at the photo's size, its edges
+    snapped to the photo's (guided filter), so the light stops exactly where the counter does."""
+    h, w = photo_bgr.shape[:2]
+    up = cv2.resize(np.asarray(shading_rgb, np.float32), (w, h), interpolation=cv2.INTER_CUBIC)
+    up = np.clip(up, 1e-4, None)
+    guide = cv2.cvtColor(photo_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
+    r = max(2, int(round(4 * _scale((h, w)))))
+    out = np.stack([guided_filter(guide, np.log(up[..., c]), r, 1e-3) for c in range(3)], axis=-1)
+    return np.exp(out).astype(np.float32)
+
+
 def light_tint(lin: np.ndarray, strength: float = 0.5) -> np.ndarray:
     """Colour of the room's light, from its brightest near-neutral pixels (walls, cabinets)."""
     lum = _luminance(lin)
@@ -467,7 +479,7 @@ def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.n
                       exposure: float = 0.92, mask: np.ndarray | None = None,
                       options: RenderOptions = V3, original_bgr: np.ndarray | None = None,
                       tex_px_per_mm: float | None = None, tex_origin_mm: tuple[float, float] = (0.0, 0.0),
-                      faces=None) -> tuple[np.ndarray, np.ndarray]:
+                      faces=None, light: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Return (new photo, mask) with one surface replaced by the finish texture.
 
     `photo_bgr` is the image so far (earlier surfaces already replaced: reflections
@@ -479,6 +491,9 @@ def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.n
     `mask`, when given (e.g. from SAM 3 or a user outline), replaces the polygon region.
     `faces` (renderer.faces.FaceMap) marks the countertop's front and end faces; they are
     textured and lit as faces, and any predicted band is added to the returned mask.
+    `light`, when given, is the photo's diffuse shading from a lighting model (linear RGB,
+    photo-sized; see light_from_model): the room's light without the old surface's colour or
+    shine. It replaces the estimate from the photo's own brightness and the glare split.
     """
     original = photo_bgr if original_bgr is None else original_bgr
     h, w = photo_bgr.shape[:2]
@@ -510,7 +525,13 @@ def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.n
     lin_orig = srgb_to_linear(original[..., ::-1])
     albedo = srgb_to_linear(warped[..., ::-1])
     glare = None
-    if options.clean_shading:
+    if light is not None:
+        lum = _luminance(light)
+        inside = top_mask > 0
+        ref = float(np.median(lum[inside])) if np.any(inside) else 1.0
+        shading = np.clip(lum / max(ref, 1e-6), 0.3, 2.5).astype(np.float32)
+        highlights = np.zeros_like(shading)
+    elif options.clean_shading:
         shading = clean_shading(lin_orig, top_mask, surface.shading_sigma)
         highlights = np.zeros_like(shading)
         if options.glare_split:
@@ -521,7 +542,7 @@ def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.n
             glare = excess * old_level * keep
     else:
         shading, highlights = shading_and_highlights(lin_orig, top_mask, surface.shading_sigma, surface.glossy)
-    if options.contact_shadows:
+    if options.contact_shadows and light is None:  # a lighting model's shading already has the real ones
         shading = shading * contact_occlusion(surface, top_mask)
     if faces is not None and face.any():
         light = cv2.remap(shading, faces.sample_x, faces.sample_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
@@ -578,4 +599,5 @@ def mask_polygon(mask: np.ndarray, epsilon_px: float = 2.0) -> list[list[int]]:
 
 
 __all__ = ["RenderOptions", "V2", "V3", "Surface", "composite_surface", "assert_outside_unchanged", "mask_polygon",
+           "light_from_model",
            "replace"]

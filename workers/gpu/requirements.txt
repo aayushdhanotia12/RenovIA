@@ -1,0 +1,9 @@
+# The model worker's own dependencies (the app server does not need them). Install torch for
+# your hardware first: CUDA wheels on a GPU box, the default wheels on a Mac.
+diffusers>=0.33
+transformers>=4.44
+accelerate
+starlette>=0.37
+uvicorn>=0.30
+numpy
+pillow

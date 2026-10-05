@@ -61,7 +61,8 @@ On the design review, **Compartir** makes a read-only link to that design (rende
 | Find surfaces and objects | SAM 3 on fal.ai, prompted "kitchen countertop", "kitchen backsplash" and each object Claude listed (plus sink, cooktop, faucet); objects are cut out of the surfaces; the outline becomes four draggable corners | SAM 3 |
 | Suggest finishes | Claude picks 3 combinations from the available Kober finishes, answering in JSON whose schema only allows catalogue ids (structured outputs) | Claude Sonnet 5.5 |
 | Four styles at once | For each preset (Minimalista, Cálido natural, Contraste, Creativo, `styles.py`), one suggestion is rendered and priced like any design | Claude Sonnet 5.5 |
-| Render | Finish image grown into a large non-repeating texture, warped onto each surface at real size; the countertop drawn as a slab with its front edge and ends at the profile's thickness; room lighting kept without the old surface's glare, plus reflections, contact shadows and matched grain (`renderer/`, `composite-v3`) | **No**: deterministic |
+| Room light | Marigold-IID-Lighting on our own model worker (`workers/gpu`): the room's light without the old surfaces' colour or shine; without a worker the renderer estimates it from the photo | Marigold (self-hosted) |
+| Render | Finish image grown into a large non-repeating texture, warped onto each surface at real size; the countertop drawn as a slab with its front edge and ends at the profile's thickness; lit with the room light, plus reflections and matched grain (`renderer/`, `composite-v3`) | **No**: deterministic |
 | Quote | Standard piece lengths per run, Spläsh panels, allowance, installation, IVA, estimate range (`quote.py`), from the team's price sheet | **No** |
 | Final quote | The team's measurements, priced the same way with `final=True` (`staff.py`) | **No** |
 
@@ -111,6 +112,7 @@ renderer/            compositor (homography, relighting, mask assertion) and tex
 catalog/kober/       PDF extractor, finishes.json (78 finishes), products.json, prices, price_sheet.py + template, placeholder swatches
 web/                 React app; styles.css holds the tokens; esbuild build; Playwright smoke and screens tests
 samples/             sample photo, offline fixtures, make_demo_assets.py (landing demo), compare_renders.py
+workers/gpu/         our own model worker (Marigold-IID-Lighting today); runs on a cloud GPU (modal_app.py) or a Mac
 research/model_eval/ GitHub test run for candidate models (MoGe-2, GeoCalib, Marigold-IID) on free-licence kitchen photos
 ```
 

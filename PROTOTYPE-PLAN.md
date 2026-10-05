@@ -30,7 +30,9 @@ Target: demo-ready on **Fri 23 Oct**, with a buffer to **Wed 28 Oct**. "Demo-rea
 - Renders `composite-v3`: the countertop has a real edge and visible ends at the profile's thickness, and the old counter's glare no longer shows as haze on the new finish.
 - Objects: Claude lists everything on the counter and backsplash, SAM 3 cuts each one out, so the finish is never painted over a tap, sink, hob or bottle.
 - Camera data kept from the photo (with checks), used for the render.
-- A GitHub test run for MoGe-2, GeoCalib and Marigold-IID on free-licence kitchen photos (`.github/workflows/model-eval.yml`).
+- A GitHub test run for MoGe-2, GeoCalib and Marigold-IID on free-licence kitchen photos (`.github/workflows/model-eval.yml`). GeoCalib matched the photo's own camera data within 7%; Marigold's lighting is now used by the renderer.
+- Our own model worker (`workers/gpu`) serving Marigold-IID-Lighting, ready to deploy on Modal once the account exists; the offline mode uses Marigold's stored output for the sample photo.
+- Research on competitors' tech and pricing, video capture and Mac mini hosting (project: `claude/research/Competitors video and local hosting.md`).
 
 ## Week 1 · 29 Sep – 4 Oct · go live with real models
 

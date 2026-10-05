@@ -65,6 +65,10 @@ def main() -> None:
                  "quad": [[round(x), round(y)] for x, y in back.quad]},
             ],
             "objects": objects,
+            # Marigold-IID-Lighting's diffuse shading for this photo, stored from a model test run
+            # (research/model_eval) so the offline mode lights renders the way the live worker does.
+            "light": {"file": "kober_p7_light.npz", "model": "prs-eth/marigold-iid-lighting-v1-1",
+                      "note": "stored output of the 5 Oct 2026 model test run (1280 px input, 4 steps, saved at half size)"},
         }
     }
     (FIXTURES / "index.json").write_text(json.dumps(index, indent=1))

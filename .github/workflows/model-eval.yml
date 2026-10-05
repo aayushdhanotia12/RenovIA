@@ -31,10 +31,13 @@ jobs:
           pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
           pip install -r requirements.txt
           pip install -r research/model_eval/requirements.txt
+          pip install -r workers/gpu/requirements.txt
       - name: Fetch photos
         run: python research/model_eval/fetch_photos.py --n "${{ inputs.photos || '6' }}" --out research/model_eval/photos
       - name: Run the models
         run: python research/model_eval/run.py --photos research/model_eval/photos --out research/model_eval/results
+      - name: Check the model worker end to end
+        run: RENOVAI_WORKER_TOKEN=test python research/model_eval/worker_check.py
       - name: Keep the results as an artifact
         if: always()
         uses: actions/upload-artifact@v4

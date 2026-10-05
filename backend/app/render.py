@@ -84,7 +84,10 @@ def edge_shape(profile: dict) -> str:
 
 def render_design(photo_bgr: np.ndarray, plans: list[SurfacePlan], countertop: Finish, splash: Finish | None,
                   cache_dir: Path, options: RenderOptions = V3, profile: dict | None = None,
-                  focal_px: float | None = None) -> tuple[np.ndarray, list[dict], dict[str, np.ndarray]]:
+                  focal_px: float | None = None, light: np.ndarray | None = None,
+                  ) -> tuple[np.ndarray, list[dict], dict[str, np.ndarray]]:
+    """`light`: the photo's diffuse shading from a lighting model, at the photo's size
+    (renderer.composite.light_from_model); without it the light is estimated from the photo."""
     profile = profile or DEFAULT_PROFILE
     out = photo_bgr.copy()
     layers: list[dict] = []
@@ -119,11 +122,13 @@ def render_design(photo_bgr: np.ndarray, plans: list[SurfacePlan], countertop: F
                     predict_band=not plan.detected,
                     photo_lum=cv2.cvtColor(photo_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32))
             out, mask = composite_surface(out, surface, tex, mask=plan.mask, options=options, original_bgr=photo_bgr,
-                                          tex_px_per_mm=PX_PER_MM, tex_origin_mm=(pad, pad), faces=faces)
+                                          tex_px_per_mm=PX_PER_MM, tex_origin_mm=(pad, pad), faces=faces,
+                                          light=light)
         else:
             surface.glare_cap = 1.5  # walls: light pools under the cabinets are real light, keep them
             tex = texture_for(finish, plan.width_mm, plan.height_mm, cache_dir)
-            out, mask = composite_surface(out, surface, tex, mask=plan.mask, options=options, original_bgr=photo_bgr)
+            out, mask = composite_surface(out, surface, tex, mask=plan.mask, options=options, original_bgr=photo_bgr,
+                                          light=light)
         masks[plan.surface_id] = mask
         claimed |= mask > 0
         layer_faces = {}

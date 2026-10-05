@@ -12,6 +12,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from renderer.composite import light_from_model
+
 from .ai.base import ModelError
 from .ai.factory import Models
 from .catalogue import Catalogue
@@ -102,6 +104,17 @@ def analyse(ctx: Ctx, owner: str, pid: str, photo_id: str, language: str, progre
             cv2.imwrite(str(ctx.project_dir(pid) / mask_file), product)
             items.append({"surface_id": sid, "surface_class": cls, "run_id": runs[i], "quad": quad,
                           "polygon": mask_polygon(product), "mask_file": mask_file, "score": round(det.score, 3)})
+    # The room's light without the old surfaces' colour or shine (lighting model), kept per photo.
+    light_file = None
+    if ctx.models.lighting is not None:
+        try:
+            light = ctx.models.lighting.estimate(img)
+        except ModelError:
+            light = None
+        if light is not None:
+            light_file = f"light/{photo_id}.npz"
+            (ctx.project_dir(pid) / "light").mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(ctx.project_dir(pid) / light_file, shading=light.astype(np.float16))
     object_items = []
     for j, obj in enumerate(sorted(objects, key=lambda d: -d.score)[:40]):
         object_file = f"masks/{photo_id}_object_{j + 1}.png"
@@ -116,7 +129,8 @@ def analyse(ctx: Ctx, owner: str, pid: str, photo_id: str, language: str, progre
 
     surfaces = project["surfaces"] or {}
     surfaces[photo_id] = {"confirmed": False, "items": items, "objects": object_items,
-                          "detector": ctx.models.detector.model_id}
+                          "detector": ctx.models.detector.model_id, "light_file": light_file,
+                          "lighting": ctx.models.lighting.model_id if light_file else None}
     ctx.store.update_project(owner, pid, surfaces=surfaces, description=description)
     return {"photo_id": photo_id, "surfaces": items, "objects": object_items, "description": description}
 
@@ -202,9 +216,14 @@ def design(ctx: Ctx, owner: str, pid: str, photo_id: str, choice: dict, progress
     language = choice.get("language", "es")
     progress("RENDER", detail=detail("lay", language, name=top.name))
     camera = (photo.get("checks") or {}).get("camera") or {}
+    light, lighting_id = None, "builtin:photo-luminance"
+    if surf.get("light_file") and (ctx.project_dir(pid) / surf["light_file"]).exists():
+        light = light_from_model(np.load(ctx.project_dir(pid) / surf["light_file"])["shading"], img)
+        lighting_id = surf.get("lighting") or "unknown"
     image, layers, masks = render_design(img, plans, top, splash, ctx.texture_cache,
                                          profile=cat.profile(choice["profile_id"]),
-                                         focal_px=camera.get("focal_px") if camera.get("source") == "exif" else None)
+                                         focal_px=camera.get("focal_px") if camera.get("source") == "exif" else None,
+                                         light=light)
     design_id = new_id("dsg")
     save_render(ctx.project_dir(pid) / "renders", design_id, image, masks)
     progress("RENDER", "done")
@@ -220,7 +239,8 @@ def design(ctx: Ctx, owner: str, pid: str, photo_id: str, choice: dict, progress
         "layers": layers,
         "camera": {"focal_px": camera.get("focal_px"), "source": camera.get("source", "default")},
     }
-    versions = {**ctx.models.versions(), "renderer": RENDERER_VERSION, "price_list": cat.price_version}
+    versions = {**ctx.models.versions(), "lighting": lighting_id, "renderer": RENDERER_VERSION,
+                "price_list": cat.price_version}
     ctx.store.add_design(pid, design_id, photo_id, choice, f"renders/{design_id}.jpg", manifest, quote, versions)
     progress("QUOTE", "done")
     return {"design_id": design_id}
