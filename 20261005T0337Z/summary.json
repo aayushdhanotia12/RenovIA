@@ -1,0 +1,367 @@
+{
+ "models": {
+  "moge2": "Ruicheng/moge-2-vitb-normal",
+  "geocalib": "GeoCalib (pinhole)",
+  "marigold": "prs-eth/marigold-iid-lighting-v1-1"
+ },
+ "load": {
+  "moge2": {
+   "loaded_s": 13.6
+  },
+  "geocalib": {
+   "loaded_s": 2.8
+  },
+  "marigold": {
+   "loaded_s": 36.5
+  }
+ },
+ "photos": [
+  {
+   "file": "00_kober_p7.jpg",
+   "size": [
+    1280,
+    800
+   ],
+   "attribution": {
+    "file": "00_kober_p7.jpg",
+    "title": "Kober catalogue page 7 kitchen (repo sample)",
+    "licence": "Kober catalogue image, used internally",
+    "source": "samples/kober_photos"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 907,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "seconds": 13.1,
+    "focal_px": 1039.7,
+    "fov_deg": 63.2,
+    "depth_m_median": 2.08
+   },
+   "geocalib": {
+    "focal_px": 829.7267252604166,
+    "roll_deg": -0.14,
+    "pitch_deg": -0.33,
+    "focal_uncertainty": 369.7513,
+    "vfov_uncertainty": 0.3287,
+    "roll_uncertainty": 0.0112,
+    "pitch_uncertainty": 0.0211,
+    "seconds": 2.2,
+    "fov_deg": 75.3
+   },
+   "marigold": {
+    "seconds": 97.1,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "01_Se_or_preparando_esquites_jpg.jpg",
+   "size": [
+    1280,
+    853
+   ],
+   "attribution": {
+    "file": "01_Se_or_preparando_esquites_jpg.jpg",
+    "title": "File:Señor preparando esquites.jpg",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/Se%C3%B1or_preparando_esquites.jpg/1920px-Se%C3%B1or_preparando_esquites.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Se%C3%B1or_preparando_esquites.jpg",
+    "licence": "Public domain",
+    "author": "Viritrudis",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 924,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "seconds": 13.3,
+    "focal_px": 1076.4,
+    "fov_deg": 61.5,
+    "depth_m_median": 2.71
+   },
+   "geocalib": {
+    "focal_px": 1683.6848958333333,
+    "roll_deg": -1.11,
+    "pitch_deg": -6.68,
+    "focal_uncertainty": 569.9193,
+    "vfov_uncertainty": 0.152,
+    "roll_uncertainty": 0.0182,
+    "pitch_uncertainty": 0.0544,
+    "seconds": 2.2,
+    "fov_deg": 41.6
+   },
+   "marigold": {
+    "seconds": 103.6,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "02_DISE_O_VADILLO_jpg.jpg",
+   "size": [
+    1280,
+    873
+   ],
+   "attribution": {
+    "file": "02_DISE_O_VADILLO_jpg.jpg",
+    "title": "File:DISEÑO VADILLO.jpg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/d/d2/DISE%C3%91O_VADILLO.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:DISE%C3%91O_VADILLO.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Arq",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 931,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "seconds": 13.5,
+    "focal_px": 994.4,
+    "fov_deg": 65.5,
+    "depth_m_median": 3.83
+   },
+   "geocalib": {
+    "focal_px": 1456.4190391459074,
+    "roll_deg": 0.07,
+    "pitch_deg": -0.78,
+    "focal_uncertainty": 903.8192,
+    "vfov_uncertainty": 0.3665,
+    "roll_uncertainty": 0.0098,
+    "pitch_uncertainty": 0.0327,
+    "seconds": 2.3,
+    "fov_deg": 47.4
+   },
+   "marigold": {
+    "seconds": 107.0,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "03_2013_12_29_K_che_in_Zinacantan_Chiapas_anagoria_JP.jpg",
+   "size": [
+    1280,
+    853
+   ],
+   "attribution": {
+    "file": "03_2013_12_29_K_che_in_Zinacantan_Chiapas_anagoria_JP.jpg",
+    "title": "File:2013-12-29 Küche in Zinacantan Chiapas anagoria.JPG",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/2013-12-29_K%C3%BCche_in_Zinacantan_Chiapas_anagoria.JPG/1920px-2013-12-29_K%C3%BCche_in_Zinacantan_Chiapas_anagoria.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:2013-12-29_K%C3%BCche_in_Zinacantan_Chiapas_anagoria.JPG",
+    "licence": "CC BY 3.0",
+    "author": "Anagoria",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 924,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "seconds": 13.2,
+    "focal_px": 980.6,
+    "fov_deg": 66.3,
+    "depth_m_median": 5.18
+   },
+   "geocalib": {
+    "focal_px": 1085.8805338541665,
+    "roll_deg": -0.74,
+    "pitch_deg": -9.09,
+    "focal_uncertainty": 192.7884,
+    "vfov_uncertainty": 0.1139,
+    "roll_uncertainty": 0.0201,
+    "pitch_uncertainty": 0.0391,
+    "seconds": 2.1,
+    "fov_deg": 61.0
+   },
+   "marigold": {
+    "seconds": 104.2,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "04_ParicutinMichoacan003_JPG.jpg",
+   "size": [
+    1280,
+    851
+   ],
+   "attribution": {
+    "file": "04_ParicutinMichoacan003_JPG.jpg",
+    "title": "File:ParicutinMichoacan003.JPG",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/ParicutinMichoacan003.JPG/1920px-ParicutinMichoacan003.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:ParicutinMichoacan003.JPG",
+    "licence": "CC BY-SA 4.0",
+    "author": "AlejandroLinaresGarcia",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 924,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "seconds": 13.4,
+    "focal_px": 1040.1,
+    "fov_deg": 63.2,
+    "depth_m_median": 2.46
+   },
+   "geocalib": {
+    "focal_px": 1158.0922037760415,
+    "roll_deg": 0.47,
+    "pitch_deg": -4.48,
+    "focal_uncertainty": 406.0225,
+    "vfov_uncertainty": 0.2141,
+    "roll_uncertainty": 0.0328,
+    "pitch_uncertainty": 0.063,
+    "seconds": 2.0,
+    "fov_deg": 57.9
+   },
+   "marigold": {
+    "seconds": 103.3,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "05_LasTunasTelchac002_JPG.jpg",
+   "size": [
+    1280,
+    851
+   ],
+   "attribution": {
+    "file": "05_LasTunasTelchac002_JPG.jpg",
+    "title": "File:LasTunasTelchac002.JPG",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/LasTunasTelchac002.JPG/1920px-LasTunasTelchac002.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:LasTunasTelchac002.JPG",
+    "licence": "CC BY-SA 4.0",
+    "author": "AlejandroLinaresGarcia",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 924,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "seconds": 13.2,
+    "focal_px": 960.5,
+    "fov_deg": 67.4,
+    "depth_m_median": 4.14
+   },
+   "geocalib": {
+    "focal_px": 943.5963541666666,
+    "roll_deg": 1.0,
+    "pitch_deg": -2.65,
+    "focal_uncertainty": 246.2577,
+    "vfov_uncertainty": 0.1845,
+    "roll_uncertainty": 0.013,
+    "pitch_uncertainty": 0.026,
+    "seconds": 2.0,
+    "fov_deg": 68.3
+   },
+   "marigold": {
+    "seconds": 102.8,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "06_Residencial_corales_panoramio_Humberto_Aranda_Migo.jpg",
+   "size": [
+    1280,
+    960
+   ],
+   "attribution": {
+    "file": "06_Residencial_corales_panoramio_Humberto_Aranda_Migo.jpg",
+    "title": "File:Residencial corales - panoramio - Humberto Aranda Migo… (5).jpg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/1/13/Residencial_corales_-_panoramio_-_Humberto_Aranda_Migo%E2%80%A6_%285%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:Residencial_corales_-_panoramio_-_Humberto_Aranda_Migo%E2%80%A6_(5).jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Humberto Aranda Migo…",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "exif",
+    "focal_35mm": 36.0,
+    "focal_px": 1331,
+    "lens": "tele",
+    "reason": null,
+    "make": "NIKON",
+    "model": "E2200"
+   },
+   "moge2": {
+    "seconds": 13.1,
+    "focal_px": 1177.0,
+    "fov_deg": 57.1,
+    "depth_m_median": 3.96
+   },
+   "geocalib": {
+    "focal_px": 1252.30712890625,
+    "roll_deg": -0.03,
+    "pitch_deg": -0.91,
+    "focal_uncertainty": 440.3616,
+    "vfov_uncertainty": 0.2659,
+    "roll_uncertainty": 0.012,
+    "pitch_uncertainty": 0.0351,
+    "seconds": 1.7,
+    "fov_deg": 54.1
+   },
+   "marigold": {
+    "seconds": 116.5,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  }
+ ]
+}
