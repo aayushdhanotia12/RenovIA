@@ -84,7 +84,10 @@ class MoGe2:
     def __call__(self, rgb: np.ndarray) -> dict:
         t = self.torch.tensor(rgb / 255.0, dtype=self.torch.float32).permute(2, 0, 1)
         with self.torch.no_grad():
-            out = self.model.infer(t)
+            try:
+                out = self.model.infer(t, use_fp16=False)  # half precision only works on GPU
+            except TypeError:
+                out = self.model.infer(t)
         depth = out["depth"].cpu().numpy()
         normal = out["normal"].cpu().numpy() if "normal" in out and out["normal"] is not None else None
         K = out["intrinsics"].cpu().numpy()
