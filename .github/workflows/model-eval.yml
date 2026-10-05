@@ -1,9 +1,12 @@
 # Model test run: MoGe-2, GeoCalib and Marigold-IID-Lighting on free-licence kitchen photos, on CPU.
-# Started by hand (Actions > Model test run > Run workflow). Results go to the
-# `model-eval-results` branch (one folder per run) and to the run's artifacts.
+# Started by hand (Actions > Model test run > Run workflow) or by pushing the `run-model-eval`
+# branch. Results go to the `model-eval-results` branch (one folder per run) and to the run's
+# artifacts.
 name: Model test run
 
 on:
+  push:
+    branches: [run-model-eval]
   workflow_dispatch:
     inputs:
       photos:
@@ -29,7 +32,7 @@ jobs:
           pip install -r requirements.txt
           pip install -r research/model_eval/requirements.txt
       - name: Fetch photos
-        run: python research/model_eval/fetch_photos.py --n "${{ inputs.photos }}" --out research/model_eval/photos
+        run: python research/model_eval/fetch_photos.py --n "${{ inputs.photos || '6' }}" --out research/model_eval/photos
       - name: Run the models
         run: python research/model_eval/run.py --photos research/model_eval/photos --out research/model_eval/results
       - name: Keep the results as an artifact
