@@ -1,7 +1,8 @@
 """Offline stand-ins for the models, so the whole app runs and tests without keys.
 
-MockDetector returns stored surfaces for known sample photos (samples/fixtures) and
-nothing for other photos, in which case the user places the corners by hand.
+MockDetector returns stored surfaces and objects for known sample photos
+(samples/fixtures) and nothing for other photos, in which case the user places the
+corners by hand.
 MockSuggester picks from a fixed set by keywords; its output goes through the same
 validation as Claude's.
 """
@@ -38,7 +39,7 @@ def _hamming(a: str, b: str) -> int:
 class MockDetector:
     model_id = "mock:fixtures"
 
-    def detect(self, image_bgr: np.ndarray) -> list[Detection]:
+    def detect(self, image_bgr: np.ndarray, objects: list[str] | None = None) -> list[Detection]:
         index = FIXTURES / "index.json"
         if not index.exists():
             return []
@@ -59,6 +60,13 @@ class MockDetector:
             out.append(Detection(surface_class=item["surface_class"],
                                  mask=np.where(mask > 127, 255, 0).astype(np.uint8),
                                  score=float(item.get("score", 0.9)), quad=quad))
+        for item in entry.get("objects", []):
+            mask = cv2.imread(str(FIXTURES / item["mask"]), cv2.IMREAD_GRAYSCALE)
+            if mask is None:
+                continue
+            mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
+            out.append(Detection(surface_class="object", mask=np.where(mask > 127, 255, 0).astype(np.uint8),
+                                 score=float(item.get("score", 0.9)), label=item["label"]))
         return out
 
 
@@ -71,7 +79,7 @@ class MockDescriber:
         return {
             "cabinets": "not analysed (offline mode)", "floor": "not analysed", "walls": "not analysed",
             "current_countertop": "not analysed", "current_backsplash": "not analysed",
-            "lighting": "bright" if light > 60 else "dim", "style": "unknown", "colours": [],
+            "lighting": "bright" if light > 60 else "dim", "style": "unknown", "colours": [], "objects": [],
         }
 
 

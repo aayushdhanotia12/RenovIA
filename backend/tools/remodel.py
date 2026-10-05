@@ -32,7 +32,7 @@ from backend.app.ai.fal_sam3 import FalSam3Detector
 from backend.app.ai.suggester import ClaudeDescriber, ClaudeSuggester
 from backend.app.catalogue import get_catalogue
 from backend.app.config import get_settings
-from backend.app.geometry import fit_quad, rectangle_aspect, valid_quad
+from backend.app.geometry import fit_quad, rectangle_aspect, subtract_objects, valid_quad
 from backend.app.render import render_design, SurfacePlan
 from backend.app.styles import STYLES, brief_for
 
@@ -69,6 +69,7 @@ def plans_from(img: np.ndarray, detections) -> tuple[list[SurfacePlan], list[dic
             continue
         best = max(cands, key=lambda d: d.score * np.count_nonzero(d.mask))
         quad = best.quad or fit_quad(best.mask)
+        best.mask = subtract_objects(best.mask, [d.mask for d in detections if d.surface_class == "object"])
         if not quad or not valid_quad(quad, w, h):
             info.append({"surface": cls, "skipped": "no usable four-corner outline"})
             continue
@@ -156,15 +157,16 @@ def main() -> int:
             cv2.imwrite(str(d / "original.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 90])
 
             t0 = time.time()
-            dets = detector.detect(img)
+            desc = describer.describe(img, language)
+            rec["description"], rec["describe_seconds"] = desc, round(time.time() - t0, 1)
+
+            t0 = time.time()
+            dets = detector.detect(img, objects=desc.get("objects"))
             plans, rec["surfaces"] = plans_from(img, dets)
+            rec["objects"] = sorted({d.label for d in dets if d.surface_class == "object"})
             rec["sam3_seconds"] = round(time.time() - t0, 1)
             cv2.imwrite(str(d / "surfaces.jpg"), overlay(img, plans), [cv2.IMWRITE_JPEG_QUALITY, 88])
             print(f"[{stem}] SAM 3: {len(dets)} masks, using {[p.surface_class for p in plans]}", flush=True)
-
-            t0 = time.time()
-            desc = describer.describe(img, language)
-            rec["description"], rec["describe_seconds"] = desc, round(time.time() - t0, 1)
 
             tiles = [caption(img, ["Original"]), caption(overlay(img, plans), ["Superficies detectadas (SAM 3)"])]
             rec["styles"] = {}
@@ -177,7 +179,8 @@ def main() -> int:
                 srec = {"design": pick, "suggest_seconds": round(time.time() - t0, 1)}
                 if plans:
                     t0 = time.time()
-                    image, layers, _ = render_design(img, plans, top, splash, cache)
+                    image, layers, _ = render_design(img, plans, top, splash, cache,
+                                                     profile=cat.profile(pick["profile_id"]))
                     srec["render_seconds"] = round(time.time() - t0, 1)
                     cv2.imwrite(str(d / f"{style}.jpg"), image, [cv2.IMWRITE_JPEG_QUALITY, 90])
                     names = ascii_label(f"Cubierta: {top.name}" + (f"  |  Salpicadero: {splash.name}" if splash else ""))

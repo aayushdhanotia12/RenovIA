@@ -16,7 +16,7 @@ from .ai.base import ModelError
 from .ai.factory import Models
 from .catalogue import Catalogue
 from .config import Settings
-from .geometry import fit_quad, mask_polygon, polygon_mask
+from .geometry import fit_quad, mask_polygon, object_record, polygon_mask, subtract_objects
 from .quote import CountertopRun, QuoteRequest, SplashRun, price_quote
 from .render import RENDERER_VERSION, SurfacePlan, render_design, save_render
 from .store import Store, new_id
@@ -29,7 +29,8 @@ class FlowError(ValueError):
 
 # Progress details are shown to the customer under each stage, so they follow the job's language.
 _DETAIL = {
-    "find": ("Buscando tu cubierta y tu salpicadero", "Finding your countertop and backsplash"),
+    "find": ("Buscando tu cubierta, tu salpicadero y lo que hay sobre ellos",
+             "Finding your countertop, backsplash and everything on them"),
     "found": ("Encontramos {top} cubierta(s) y {splash} salpicadero(s)", "Found {top} countertop and {splash} backsplash surface(s)"),
     "look": ("Observando tus gabinetes y paredes", "Looking at your cabinets and walls"),
     "retry": ("Revisando otra vez", "Taking a second look"),
@@ -72,8 +73,13 @@ def analyse(ctx: Ctx, owner: str, pid: str, photo_id: str, language: str, progre
     project = ctx.store.project(owner, pid)
     _, img = load_photo(ctx, owner, pid, photo_id)
     progress("GEOMETRY", detail=detail("find", language))
+    # Claude looks first: its list of what stands on the counter tells SAM 3 what to cut out.
     try:
-        detections = ctx.models.detector.detect(img)
+        description = ctx.models.describer.describe(img, language)
+    except ModelError:
+        description = None
+    try:
+        detections = ctx.models.detector.detect(img, objects=(description or {}).get("objects"))
     except ModelError as e:
         progress("GEOMETRY", "failed", detail=str(e))
         detections = []
@@ -82,6 +88,7 @@ def analyse(ctx: Ctx, owner: str, pid: str, photo_id: str, language: str, progre
     splash_runs = [r["run_id"] for r in meas.get("splash_runs", [])] or ["S1"]
     mask_dir = ctx.project_dir(pid) / "masks"
     mask_dir.mkdir(parents=True, exist_ok=True)
+    objects = [d for d in detections if d.surface_class == "object"]
     items = []
     for cls, runs in (("countertop", top_runs), ("backsplash", splash_runs)):
         dets = sorted((d for d in detections if d.surface_class == cls), key=lambda d: -int(np.count_nonzero(d.mask)))
@@ -90,25 +97,28 @@ def analyse(ctx: Ctx, owner: str, pid: str, photo_id: str, language: str, progre
             quad = det.quad or fit_quad(det.mask)
             if quad is None:
                 continue
+            product = subtract_objects(det.mask, [o.mask for o in objects])  # never paint over a tap or a bottle
             mask_file = f"masks/{photo_id}_{sid}.png"
-            cv2.imwrite(str(ctx.project_dir(pid) / mask_file), det.mask)
+            cv2.imwrite(str(ctx.project_dir(pid) / mask_file), product)
             items.append({"surface_id": sid, "surface_class": cls, "run_id": runs[i], "quad": quad,
-                          "polygon": mask_polygon(det.mask), "mask_file": mask_file, "score": round(det.score, 3)})
+                          "polygon": mask_polygon(product), "mask_file": mask_file, "score": round(det.score, 3)})
+    object_items = []
+    for j, obj in enumerate(sorted(objects, key=lambda d: -d.score)[:40]):
+        object_file = f"masks/{photo_id}_object_{j + 1}.png"
+        cv2.imwrite(str(ctx.project_dir(pid) / object_file), obj.mask)
+        object_items.append({**object_record(obj.label or "object", obj.mask, obj.score), "mask_file": object_file})
     found = sum(1 for it in items if it["surface_class"] == "countertop")
     progress("GEOMETRY", "done", detail=detail(
         "found", language, top=found, splash=sum(1 for it in items if it["surface_class"] == "backsplash")))
 
     progress("DESCRIBE", detail=detail("look", language))
-    try:
-        description = ctx.models.describer.describe(img, language)
-    except ModelError:
-        description = None
     progress("DESCRIBE", "done")
 
     surfaces = project["surfaces"] or {}
-    surfaces[photo_id] = {"confirmed": False, "items": items, "detector": ctx.models.detector.model_id}
+    surfaces[photo_id] = {"confirmed": False, "items": items, "objects": object_items,
+                          "detector": ctx.models.detector.model_id}
     ctx.store.update_project(owner, pid, surfaces=surfaces, description=description)
-    return {"photo_id": photo_id, "surfaces": items, "description": description}
+    return {"photo_id": photo_id, "surfaces": items, "objects": object_items, "description": description}
 
 
 def _suggest_once(ctx: Ctx, description: dict | None, brief: str, budget: str | None, language: str,
@@ -184,13 +194,17 @@ def design(ctx: Ctx, owner: str, pid: str, photo_id: str, choice: dict, progress
         else:
             mask = polygon_mask(item.get("polygon") or item["quad"], (h, w))
         plans.append(SurfacePlan(item["surface_id"], item["surface_class"], item["run_id"], item["quad"],
-                                 mask, width_mm, height_mm, item.get("score") or 1.0))
+                                 mask, width_mm, height_mm, item.get("score") or 1.0,
+                                 detected=bool(item.get("mask_file"))))
     if not any(p.surface_class == "countertop" for p in plans):
         raise FlowError("no countertop surface matches the measured runs")
 
     language = choice.get("language", "es")
     progress("RENDER", detail=detail("lay", language, name=top.name))
-    image, layers, masks = render_design(img, plans, top, splash, ctx.texture_cache)
+    camera = (photo.get("checks") or {}).get("camera") or {}
+    image, layers, masks = render_design(img, plans, top, splash, ctx.texture_cache,
+                                         profile=cat.profile(choice["profile_id"]),
+                                         focal_px=camera.get("focal_px") if camera.get("source") == "exif" else None)
     design_id = new_id("dsg")
     save_render(ctx.project_dir(pid) / "renders", design_id, image, masks)
     progress("RENDER", "done")
@@ -204,6 +218,7 @@ def design(ctx: Ctx, owner: str, pid: str, photo_id: str, choice: dict, progress
         "image": {"url": f"/media/{pid}/renders/{design_id}.jpg", "width": w, "height": h},
         "before_url": f"/media/{pid}/{photo['path']}",
         "layers": layers,
+        "camera": {"focal_px": camera.get("focal_px"), "source": camera.get("source", "default")},
     }
     versions = {**ctx.models.versions(), "renderer": RENDERER_VERSION, "price_list": cat.price_version}
     ctx.store.add_design(pid, design_id, photo_id, choice, f"renders/{design_id}.jpg", manifest, quote, versions)

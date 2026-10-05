@@ -50,6 +50,38 @@
      ]
     ]
    }
+  ],
+  "objects": [
+   {
+    "label": "faucet",
+    "mask": "kober_p7_object_faucet.png",
+    "score": 0.88
+   },
+   {
+    "label": "sink",
+    "mask": "kober_p7_object_sink.png",
+    "score": 0.88
+   },
+   {
+    "label": "cooktop",
+    "mask": "kober_p7_object_cooktop.png",
+    "score": 0.88
+   },
+   {
+    "label": "bottle",
+    "mask": "kober_p7_object_bottle.png",
+    "score": 0.88
+   },
+   {
+    "label": "cooking pot",
+    "mask": "kober_p7_object_cooking_pot.png",
+    "score": 0.88
+   },
+   {
+    "label": "potted plant",
+    "mask": "kober_p7_object_potted_plant.png",
+    "score": 0.88
+   }
   ]
  }
 }

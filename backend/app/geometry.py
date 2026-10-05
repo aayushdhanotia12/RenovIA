@@ -103,3 +103,32 @@ def rectangle_aspect(quad: list[Point], width: int, height: int, focal_px: float
     a_inv = np.linalg.inv(np.array([[f, 0, u0], [0, f, v0], [0, 0, 1.0]]))
     a2, a3 = a_inv @ n2, a_inv @ n3
     return float(np.sqrt((a2 @ a2) / (a3 @ a3)))
+
+
+def subtract_objects(surface_mask: np.ndarray, object_masks: list[np.ndarray],
+                     max_share: float = 0.4) -> np.ndarray:
+    """The surface's product pixels: its mask minus everything standing on or in front of it.
+
+    An "object" that covers more than `max_share` of the surface is a detector mix-up (the
+    whole counter returned for "cooktop"), not something on the counter, and is ignored.
+    """
+    out = surface_mask.copy()
+    area = max(int(np.count_nonzero(surface_mask)), 1)
+    for m in object_masks:
+        overlap = (m > 0) & (surface_mask > 0)
+        n = int(np.count_nonzero(overlap))
+        if n == 0 or n > max_share * area:
+            continue
+        out[overlap] = 0
+    return out
+
+
+def object_record(label: str, mask: np.ndarray, score: float) -> dict:
+    """What the app keeps about a detected object: enough to point at it and to keep it unpainted."""
+    ys, xs = np.nonzero(mask)
+    if len(xs) == 0:
+        return {"label": label, "score": round(float(score), 3), "area_px": 0}
+    return {"label": label, "score": round(float(score), 3), "area_px": int(len(xs)),
+            "bbox": [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1],
+            "centroid": centroid(mask)}
+

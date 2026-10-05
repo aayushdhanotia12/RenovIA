@@ -1,7 +1,7 @@
 """Before/after of renderer changes on the Kober p7 kitchen, through the app's own path.
 
-    python samples/compare_renders.py            # v1 vs v2 for each finish pair
-    python samples/compare_renders.py --steps    # add each v2 step one at a time
+    python samples/compare_renders.py            # composite-v2 vs v3 for each finish pair
+    python samples/compare_renders.py --steps    # add each step to v1 one at a time
 
 Writes JPEGs to samples/out/compare/.
 """
@@ -26,14 +26,15 @@ from renderer.composite import RenderOptions  # noqa: E402
 
 PHOTO = ROOT / "samples/kober_photos/p7_0_1920x1200.jpg"
 OUT = ROOT / "samples/out/compare"
-PAIRS = {
-    "caracatta": ("estilo-caracatta", "estilo-caracatta"),
-    "rovere_gesso": ("estilo-rovere-slavonia", "estilo-porfido-gesso"),
-    "calcutta_kandia": ("diseno-calcutta-marble", "estilo-black-kandia"),
-    "nero_caracatta": ("estilo-porfido-nero", "estilo-caracatta"),
+PAIRS = {  # countertop, backsplash, profile
+    "caracatta": ("estilo-caracatta", "estilo-caracatta", "original"),
+    "rovere_gesso": ("estilo-rovere-slavonia", "estilo-porfido-gesso", "original_q"),
+    "calcutta_kandia": ("diseno-calcutta-marble", "estilo-black-kandia", "original_q"),
+    "nero_caracatta": ("estilo-porfido-nero", "estilo-caracatta", "essence"),
 }
-STEPS = ["fill_specks", "clean_shading", "light_tint", "reflections", "contact_shadows", "soft_edges", "grain", "supersample"]
-CROP = (slice(560, 1040), slice(150, 1150))  # counter with hob, bottles and the plant's pot edge
+STEPS = ["fill_specks", "clean_shading", "light_tint", "reflections", "contact_shadows", "soft_edges", "grain",
+         "supersample", "slab_faces", "glare_split"]
+CROP = (slice(600, 1080), slice(900, 1900))  # counter front edge, its end and the plant
 
 
 def label(img: np.ndarray, text: str) -> np.ndarray:
@@ -49,10 +50,10 @@ def main() -> None:
     img = cv2.imread(str(PHOTO), cv2.IMREAD_COLOR)
     plans = plans_for(img)
     cache = Path(tempfile.mkdtemp())
-    for name, (top_id, splash_id) in PAIRS.items():
-        top, splash = cat.finish(top_id), cat.finish(splash_id)
-        v1, _, _ = render_design(img, plans, top, splash, cache, RenderOptions.v1())
-        v2, _, _ = render_design(img, plans, top, splash, cache, RenderOptions())
+    for name, (top_id, splash_id, profile_id) in PAIRS.items():
+        top, splash, profile = cat.finish(top_id), cat.finish(splash_id), cat.profile(profile_id)
+        v1, _, _ = render_design(img, plans, top, splash, cache, RenderOptions.v2(), profile=profile)
+        v2, _, _ = render_design(img, plans, top, splash, cache, RenderOptions(), profile=profile)
         full = np.hstack([label(v1, "before"), label(v2, "after")])
         cv2.imwrite(str(OUT / f"{name}_full.jpg"), cv2.resize(full, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA),
                     [cv2.IMWRITE_JPEG_QUALITY, 90])
@@ -60,10 +61,11 @@ def main() -> None:
         cv2.imwrite(str(OUT / f"{name}_zoom.jpg"), crop, [cv2.IMWRITE_JPEG_QUALITY, 92])
         if "--steps" in sys.argv:
             opts = RenderOptions.v1()
-            tiles = [label(v1[CROP], "v1")]
+            first, _, _ = render_design(img, plans, top, splash, cache, opts, profile=profile)
+            tiles = [label(first[CROP], "v1")]
             for step in STEPS:
                 opts = replace(opts, **{step: True})
-                out, _, _ = render_design(img, plans, top, splash, cache, opts)
+                out, _, _ = render_design(img, plans, top, splash, cache, opts, profile=profile)
                 tiles.append(label(out[CROP], f"+ {step}"))
             grid = [np.hstack(tiles[i:i + 2]) if i + 1 < len(tiles) else np.hstack([tiles[i], np.zeros_like(tiles[i])])
                     for i in range(0, len(tiles), 2)]

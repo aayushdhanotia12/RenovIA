@@ -20,7 +20,8 @@ export type Measurements = { countertop_runs: CountertopRun[]; splash_runs: Spla
 export type Question = { id: string; field: string; message: string };
 
 export type Photo = { id: string; width: number; height: number; url?: string; path: string;
-  checks: { light: string; sharp: string; camera_info: string } | null };
+  checks: { light: string; sharp: string; camera_info: string;
+            camera?: { focal_px: number; focal_35mm: number; source: "exif" | "default"; lens: string } } | null };
 export type SurfaceItem = { surface_id: string; surface_class: "countertop" | "backsplash"; run_id: string;
   quad: Point[]; polygon?: Point[] | null; mask_file?: string | null; score?: number | null };
 export type Suggestion = { title: string; countertop_finish_id: string; profile_id: string;

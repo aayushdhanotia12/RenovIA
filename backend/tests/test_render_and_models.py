@@ -13,7 +13,9 @@ from backend.app.ai.suggester import suggestion_schema, validate_suggestions
 from backend.app.catalogue import get_catalogue
 from backend.app.geometry import fit_quad, order_quad
 from backend.app.render import SurfacePlan, render_design
-from renderer.composite import RenderOptions, Surface, assert_outside_unchanged, fill_specks, view_cosine
+from renderer.composite import (RenderOptions, Surface, assert_outside_unchanged, fill_specks, split_glare,
+                                view_cosine)
+from renderer.faces import countertop_faces, profile_shade, vertical_vanishing_point
 
 REPO = Path(__file__).resolve().parents[2]
 PHOTO = REPO / "samples" / "kober_photos" / "p7_0_1920x1200.jpg"
@@ -22,7 +24,7 @@ CAT = get_catalogue()
 
 
 def plans_for(img):
-    dets = MockDetector().detect(img)
+    dets = [d for d in MockDetector().detect(img) if d.surface_class != "object"]
     return [SurfacePlan(f"{d.surface_class}_1", d.surface_class, "A" if d.surface_class == "countertop" else "S1",
                         d.quad, d.mask, 3600 if d.surface_class == "countertop" else 3000,
                         645 if d.surface_class == "countertop" else 600, d.score) for d in dets]
@@ -86,6 +88,80 @@ class RendererV2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             out, _, masks = render_design(img, plans_for(img), top, top, Path(tmp), RenderOptions.v1())
         assert_outside_unchanged(img, out, list(masks.values()))
+
+
+class SlabFaceTests(unittest.TestCase):
+    """composite-v3: the countertop's front edge and ends are drawn as faces, and old glare is split off."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.img = cv2.imread(str(PHOTO), cv2.IMREAD_COLOR)
+        cls.plans = plans_for(cls.img)
+        cls.top = next(p for p in cls.plans if p.surface_class == "countertop")
+        cls.wall = next(p for p in cls.plans if p.surface_class == "backsplash")
+        cls.gray = cv2.cvtColor(cls.img, cv2.COLOR_BGR2GRAY).astype(np.float32)
+
+    def faces(self, mask, predict):
+        return countertop_faces(self.img.shape[:2], [tuple(p) for p in self.top.quad], 3600, 645, mask, 40,
+                                "rounded", 0.45, 0.67, (80, 80), vertical_vanishing_point(self.wall.quad),
+                                predict_band=predict, photo_lum=self.gray)
+
+    def below_front_line(self, xs, ys):
+        (x0, y0), (x1, y1) = self.top.quad[3], self.top.quad[2]
+        return ys > y0 + (xs - x0) * (y1 - y0) / (x1 - x0) - 1
+
+    def test_p7_detected_counter_gets_its_40mm_front_edge_inside_the_detected_mask(self):
+        fm = self.faces(self.top.mask, predict=False)
+        self.assertEqual(fm.kind, "band")
+        self.assertGreater(fm.count(), 20000)
+        self.assertEqual(int(np.count_nonzero(fm.added)), 0)  # nothing outside the detected product mask
+
+    def test_hand_drawn_p7_outline_gets_a_predicted_edge_only_below_its_front_line(self):
+        mask = np.zeros(self.img.shape[:2], np.uint8)
+        cv2.fillPoly(mask, [np.int32(self.top.quad)], 255)
+        fm = self.faces(mask, predict=True)
+        self.assertEqual(fm.kind, "predicted")
+        ys, xs = np.nonzero(fm.added)
+        front = xs <= self.top.quad[2][0]  # the end face sits right of the front-right corner
+        self.assertTrue(self.below_front_line(xs[front].astype(float), ys[front].astype(float)).all())
+        # Near the front-right corner the old edge is ~57 px tall; the band must not run into the doors.
+        col = fm.mask[:, 1500]
+        self.assertLess(int(np.count_nonzero(col)), 90)
+
+    def test_detected_mask_ending_at_the_front_line_draws_the_edge_on_its_own_front_strip(self):
+        mask = np.zeros(self.img.shape[:2], np.uint8)
+        cv2.fillPoly(mask, [np.int32(self.top.quad)], 255)
+        fm = self.faces(mask, predict=False)
+        self.assertEqual(fm.kind, "inward")
+        self.assertEqual(int(np.count_nonzero(fm.added)), 0)
+
+    def test_hand_drawn_outlines_still_change_no_pixel_outside_the_product_masks(self):
+        plans = []
+        for p in plans_for(self.img):
+            mask = np.zeros(self.img.shape[:2], np.uint8)
+            cv2.fillPoly(mask, [np.int32(p.quad)], 255)
+            p.mask, p.detected = mask, False
+            plans.append(p)
+        with tempfile.TemporaryDirectory() as tmp:
+            out, layers, masks = render_design(self.img, plans, CAT.finish("estilo-rovere-slavonia"), None, Path(tmp),
+                                               profile=CAT.profile("original_q"))
+        assert_outside_unchanged(self.img, out, list(masks.values()))
+        self.assertEqual(next(layer for layer in layers if layer["surface_class"] == "countertop")["edge_kind"],
+                         "predicted")
+
+    def test_glare_at_twice_the_median_light_is_split_off_and_light_below_the_median_passes(self):
+        diffuse, glare = split_glare(np.array([0.6, 1.0, 1.2, 2.0], np.float32), cap=0.3)
+        self.assertAlmostEqual(float(diffuse[0]), 0.6, places=5)
+        self.assertAlmostEqual(float(diffuse[1]), 1.0, places=5)
+        self.assertLess(float(diffuse[3]), 1.3)
+        self.assertAlmostEqual(float(diffuse[3] + glare[3]), 2.0, places=5)
+
+    def test_rounded_original_edge_catches_more_light_just_below_the_top_than_square_original_q(self):
+        x = np.array([0.1], np.float32)
+        rounded = float(profile_shade(x, 0.62, "rounded", 0.45)[0])
+        square = float(profile_shade(x, 0.62, "square", 0.45)[0])
+        self.assertGreater(rounded, square + 0.2)
+        self.assertAlmostEqual(float(profile_shade(np.array([0.5]), 0.62, "square", 0.45)[0]), 0.62, places=5)
 
 
 class GeometryTests(unittest.TestCase):

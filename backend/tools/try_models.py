@@ -34,14 +34,20 @@ def main() -> None:
         sys.exit(f"cannot read {photo}")
     s = get_settings()
 
+    claude = AnthropicClient(s.anthropic_api_key or "", s.anthropic_model, s.anthropic_base_url, effort=s.anthropic_effort)
     t0 = time.time()
-    dets = FalSam3Detector(s.fal_key or "", s.fal_base_url, s.sam3_endpoint, s.sam3_min_score).detect(img)
-    print(f"SAM 3: {len(dets)} surface(s) in {time.time() - t0:.1f}s")
+    desc = ClaudeDescriber(claude).describe(img, "en")
+    print(f"\nClaude ({s.anthropic_model}, effort {s.anthropic_effort or 'default'}) description in "
+          f"{time.time() - t0:.1f}s:\n{json.dumps(desc, indent=1)}")
+    t0 = time.time()
+    dets = FalSam3Detector(s.fal_key or "", s.fal_base_url, s.sam3_endpoint, s.sam3_min_score).detect(img, objects=desc.get("objects"))
+    print(f"SAM 3: {len(dets)} mask(s) in {time.time() - t0:.1f}s")
     overlay = img.copy()
-    colours = {"countertop": (51, 90, 200), "backsplash": (234, 196, 147)}
+    colours = {"countertop": (51, 90, 200), "backsplash": (234, 196, 147), "object": (60, 200, 60)}
     for d in dets:
-        quad = fit_quad(d.mask)
-        print(f"  {d.surface_class:10s} score {d.score:.2f}  area {np.count_nonzero(d.mask)} px  quad {quad}")
+        quad = fit_quad(d.mask) if d.surface_class != "object" else None
+        name = d.label if d.surface_class == "object" else d.surface_class
+        print(f"  {name:14s} score {d.score:.2f}  area {np.count_nonzero(d.mask)} px  quad {quad}")
         tint = np.zeros_like(overlay)
         tint[:] = colours[d.surface_class]
         overlay = np.where(d.mask[..., None] > 0, (0.55 * overlay + 0.45 * tint).astype(np.uint8), overlay)
@@ -51,11 +57,6 @@ def main() -> None:
     cv2.imwrite(str(out), overlay)
     print(f"  overlay written to {out}")
 
-    claude = AnthropicClient(s.anthropic_api_key or "", s.anthropic_model, s.anthropic_base_url, effort=s.anthropic_effort)
-    t0 = time.time()
-    desc = ClaudeDescriber(claude).describe(img, "en")
-    print(f"\nClaude ({s.anthropic_model}, effort {s.anthropic_effort or 'default'}) description in "
-          f"{time.time() - t0:.1f}s:\n{json.dumps(desc, indent=1)}")
     t0 = time.time()
     sugg = ClaudeSuggester(claude, get_catalogue()).suggest(desc, "white marble, bright", None, "es")
     print(f"\nSuggestions in {time.time() - t0:.1f}s:\n{json.dumps(sugg, indent=1, ensure_ascii=False)}")

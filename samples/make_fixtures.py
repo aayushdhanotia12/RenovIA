@@ -40,6 +40,19 @@ def main() -> None:
     splash[counter > 0] = 0
     cv2.imwrite(str(FIXTURES / "kober_p7_countertop.png"), counter)
     cv2.imwrite(str(FIXTURES / "kober_p7_backsplash.png"), splash)
+    # Objects, as SAM 3 would return them: the pixels of each object that are not surface.
+    surface_px = (counter > 0) | (splash > 0)
+    objects = []
+    for label, polys in (("faucet", [spike.TAP]), ("sink", [spike.SINK]), ("cooktop", [spike.HOB]),
+                         ("bottle", [spike.BOTTLES]), ("cooking pot", [spike.PAN]),
+                         ("potted plant", [spike.PLANT, spike.POT])):
+        m = np.zeros((h, w), np.uint8)
+        for poly in polys:
+            cv2.fillPoly(m, [np.int32(np.round(poly))], 255)
+        m[surface_px] = 0
+        name = "kober_p7_object_" + label.replace(" ", "_") + ".png"
+        cv2.imwrite(str(FIXTURES / name), m)
+        objects.append({"label": label, "mask": name, "score": 0.88})
     top = next(s for s in spike.SURFACES if s.surface_id == "s_countertop")
     back = next(s for s in spike.SURFACES if s.surface_class == "backsplash")
     index = {
@@ -51,6 +64,7 @@ def main() -> None:
                 {"surface_class": "backsplash", "mask": "kober_p7_backsplash.png", "score": 0.9,
                  "quad": [[round(x), round(y)] for x, y in back.quad]},
             ],
+            "objects": objects,
         }
     }
     (FIXTURES / "index.json").write_text(json.dumps(index, indent=1))

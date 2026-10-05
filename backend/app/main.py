@@ -29,6 +29,7 @@ from .catalogue import Catalogue, CatalogueError
 from .config import REPO, Settings, get_settings
 from .geometry import valid_quad
 from .jobs import JobHub
+from .camera import camera_from_exif
 from .photo_checks import check_photo
 from .pipeline import Ctx, FlowError, analyse, design, style_board, suggest
 from .quote import QuoteError
@@ -133,7 +134,9 @@ def create_app(settings: Settings | None = None) -> Starlette:
         path = ctx.project_dir(pid) / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(path), img, [cv2.IMWRITE_JPEG_QUALITY, 92])
-        photo = store.add_photo(owner(request), pid, photo_id, rel, img.shape[1], img.shape[0], check_photo(img, raw))
+        checks = check_photo(img, raw)
+        checks["camera"] = camera_from_exif(raw, img.shape[1], img.shape[0])
+        photo = store.add_photo(owner(request), pid, photo_id, rel, img.shape[1], img.shape[0], checks)
         photo["url"] = f"/media/{pid}/{rel}"
         return JSONResponse(photo, status_code=201)
 
@@ -161,8 +164,9 @@ def create_app(settings: Settings | None = None) -> Starlette:
                 raise HTTPException(400, f"unknown mask for {it.surface_id}")
             items.append(it.model_dump())
         surfaces = project["surfaces"] or {}
-        surfaces[s.photo_id] = {"confirmed": True, "items": items,
-                                "detector": (surfaces.get(s.photo_id) or {}).get("detector", "manual")}
+        before = surfaces.get(s.photo_id) or {}
+        surfaces[s.photo_id] = {"confirmed": True, "items": items, "objects": before.get("objects", []),
+                                "detector": before.get("detector", "manual")}
         store.update_project(who, pid, surfaces=surfaces)
         return JSONResponse(surfaces[s.photo_id])
 

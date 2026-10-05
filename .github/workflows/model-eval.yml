@@ -1,0 +1,61 @@
+# Model test run: MoGe-2, GeoCalib and Marigold-IID-Lighting on free-licence kitchen photos, on CPU.
+# Started by hand (Actions > Model test run > Run workflow). Results go to the
+# `model-eval-results` branch (one folder per run) and to the run's artifacts.
+name: Model test run
+
+on:
+  workflow_dispatch:
+    inputs:
+      photos:
+        description: "How many Wikimedia Commons kitchen photos to add to the Kober sample"
+        default: "6"
+
+permissions:
+  contents: write
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+          pip install -r requirements.txt
+          pip install -r research/model_eval/requirements.txt
+      - name: Fetch photos
+        run: python research/model_eval/fetch_photos.py --n "${{ inputs.photos }}" --out research/model_eval/photos
+      - name: Run the models
+        run: python research/model_eval/run.py --photos research/model_eval/photos --out research/model_eval/results
+      - name: Keep the results as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-eval-results
+          path: |
+            research/model_eval/results
+            research/model_eval/photos/attribution.json
+      - name: Publish the results to the model-eval-results branch
+        if: always()
+        run: |
+          set -e
+          RUN="$(date -u +%Y%m%dT%H%MZ)"
+          git config user.name "model-eval bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch origin model-eval-results:model-eval-results; then :; else
+            EMPTY="$(git hash-object -t tree /dev/null)"
+            git branch model-eval-results "$(git commit-tree "$EMPTY" -m 'Model test results')"
+          fi
+          git worktree add /tmp/pub model-eval-results
+          mkdir -p "/tmp/pub/$RUN"
+          cp -r research/model_eval/results/. "/tmp/pub/$RUN/" || true
+          cp research/model_eval/photos/attribution.json "/tmp/pub/$RUN/" || true
+          cd /tmp/pub
+          git add -A
+          git commit -m "Model test run $RUN" || exit 0
+          git push origin model-eval-results

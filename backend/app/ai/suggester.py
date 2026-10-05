@@ -110,7 +110,8 @@ class ClaudeSuggester:
 
 DESCRIBE_SCHEMA = {
     "type": "object", "additionalProperties": False,
-    "required": ["cabinets", "floor", "walls", "current_countertop", "current_backsplash", "lighting", "style", "colours"],
+    "required": ["cabinets", "floor", "walls", "current_countertop", "current_backsplash", "lighting", "style", "colours",
+                 "objects"],
     "properties": {
         "cabinets": {"type": "string", "maxLength": 140},
         "floor": {"type": "string", "maxLength": 140},
@@ -120,8 +121,30 @@ DESCRIBE_SCHEMA = {
         "lighting": {"type": "string", "maxLength": 140},
         "style": {"type": "string", "maxLength": 140},
         "colours": {"type": "array", "maxItems": 5, "items": {"type": "string", "maxLength": 30}},
+        "objects": {"type": "array", "maxItems": 40, "items": {"type": "string", "maxLength": 40}},
     },
 }
+DESCRIBE_SYSTEM = (
+    "You describe kitchen photos for a countertop designer. Be factual and brief. Say 'not visible' when you cannot "
+    "see something. In 'objects', list every distinct thing that stands on, is set into, hangs on, or is in front of "
+    "the countertop or the backsplash: appliances, sink, faucet, cooktop, hood, sockets, rails, shelves, containers, "
+    "plants, utensils, cables, anything, however small. Write each as a short singular English noun phrase of one to "
+    "three words that an image segmentation model understands ('faucet', 'soap dispenser', 'paper towel holder'), "
+    "once per kind of thing. Never list the countertop, backsplash, cabinets, walls, floor or ceiling themselves."
+)
+NOT_OBJECTS = ("countertop", "counter top", "backsplash", "cabinet", "wall", "floor", "ceiling", "worktop")
+
+
+def clean_objects(raw: object) -> list[str]:
+    """Claude's object list as prompts for SAM 3: short, lower-case, unique, never a surface."""
+    out: list[str] = []
+    for item in raw if isinstance(raw, list) else []:
+        name = " ".join(str(item).lower().replace("_", " ").split())[:40]
+        if (not any(c.isalpha() for c in name) or len(name.split()) > 4 or any(word in name for word in NOT_OBJECTS)
+                or name in out):
+            continue
+        out.append(name)
+    return out[:40]
 
 
 class ClaudeDescriber:
@@ -132,9 +155,10 @@ class ClaudeDescriber:
     def describe(self, image_bgr: np.ndarray, language: str = "en") -> dict:
         from .anthropic_client import image_block
         out = self.client.json_call(
-            system="You describe kitchen photos for a countertop designer. Be factual and brief. Say 'not visible' "
-                   "when you cannot see something.",
+            system=DESCRIBE_SYSTEM,
             content=[image_block(image_bgr), {"type": "text", "text": "Describe this kitchen."}],
-            schema=DESCRIBE_SCHEMA, max_tokens=2000,
+            schema=DESCRIBE_SCHEMA, max_tokens=3000,
         )
-        return {k: out.get(k) for k in DESCRIBE_SCHEMA["properties"]}
+        desc = {k: out.get(k) for k in DESCRIBE_SCHEMA["properties"]}
+        desc["objects"] = clean_objects(out.get("objects"))
+        return desc

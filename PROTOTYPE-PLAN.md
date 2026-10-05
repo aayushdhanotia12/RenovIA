@@ -24,6 +24,14 @@ Target: demo-ready on **Fri 23 Oct**, with a buffer to **Wed 28 Oct**. "Demo-rea
 - **WhatsApp sharing and printable quotes:** a read-only link per design, and an A4 quote page for customers and for the team's final quote.
 - Repo rebuilt from the project copy; real Kober swatches still to restore from the PDF.
 
+## Done on days 6–7 (3–4 Oct)
+
+- Research on the latest tech for each part of the pipeline (in the project: `claude/research/Kitchen visualizer core tech 2026.md`).
+- Renders `composite-v3`: the countertop has a real edge and visible ends at the profile's thickness, and the old counter's glare no longer shows as haze on the new finish.
+- Objects: Claude lists everything on the counter and backsplash, SAM 3 cuts each one out, so the finish is never painted over a tap, sink, hob or bottle.
+- Camera data kept from the photo (with checks), used for the render.
+- A GitHub test run for MoGe-2, GeoCalib and Marigold-IID on free-licence kitchen photos (`.github/workflows/model-eval.yml`).
+
 ## Week 1 · 29 Sep – 4 Oct · go live with real models
 
 | Who | What |

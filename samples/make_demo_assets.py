@@ -44,14 +44,14 @@ def main() -> None:
     plans = [SurfacePlan(f"{d.surface_class}_1", d.surface_class, "A" if d.surface_class == "countertop" else "S1",
                          d.quad, d.mask, 3600 if d.surface_class == "countertop" else 3000,
                          645 if d.surface_class == "countertop" else 600, d.score)
-             for d in MockDetector().detect(img)]
+             for d in MockDetector().detect(img) if d.surface_class != "object"]
     cv2.imwrite(str(OUT / "before.jpg"), small(img), [cv2.IMWRITE_JPEG_QUALITY, 86])
     styles = []
     with tempfile.TemporaryDirectory() as cache:
         for sid in STYLE_IDS:
             top_id, profile_id, splash_id = STYLE_SETS[sid][0]
             top, splash = cat.finish(top_id), (cat.finish(splash_id) if splash_id != "none" else None)
-            out, layers, _ = render_design(img, plans, top, splash, Path(cache))
+            out, layers, _ = render_design(img, plans, top, splash, Path(cache), profile=cat.profile(profile_id))
             cv2.imwrite(str(OUT / f"{sid}.jpg"), small(out), [cv2.IMWRITE_JPEG_QUALITY, 86])
             styles.append({
                 "id": sid, "name": {"es": STYLES[sid]["es"], "en": STYLES[sid]["en"]},

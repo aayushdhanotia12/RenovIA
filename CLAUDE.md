@@ -30,6 +30,11 @@ Read `README.md` for the flow, `DECISIONS.md` for why the prototype differs from
 - Tests are named after their worked example (e.g. `test_run_2300mm_..._is_one_3000mm_piece_at_5670_mxn`).
 - The golden render (`backend/tests/golden/`) changes only on purpose: delete it, re-run, look at the new image, then commit.
 
+## Quality first, then cost
+
+- Don't ship a weaker version of something the product needs to save money or time (a fixed object list instead of looking at the photo, a guessed length, a cheaper model that does the job worse). If we need it, we build it properly, and then make it cheaper without losing quality: self-hosting, caching, batching.
+- Don't propose shortcuts that compromise quality or long-term sustainability unless they bring a clear short-term benefit to customers, and say what they cost.
+
 ## Ask rather than guess
 
 - Real prices, the countertop allowance (10% is a placeholder instruction), labour rates, booking fee, IVA display: these belong in the team's sheet.

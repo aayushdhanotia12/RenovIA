@@ -83,7 +83,7 @@ class ApiFlowTests(unittest.TestCase):
         self.assertTrue(quote["estimate_only"])
         self.assertLess(quote["estimate"]["low"]["minor"], quote["estimate"]["high"]["minor"])
         self.assertEqual(quote["price_list_status"], "PLACEHOLDER")
-        self.assertEqual(dsg["model_versions"]["renderer"], "composite-v2")
+        self.assertEqual(dsg["model_versions"]["renderer"], "composite-v3")
         self.assertEqual(c.get(dsg["manifest"]["image"]["url"]).status_code, 200)
 
         events = c.get(f"/api/jobs/{job['id']}/events").text

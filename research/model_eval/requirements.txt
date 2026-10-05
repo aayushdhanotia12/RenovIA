@@ -1,0 +1,9 @@
+# Only for the model test run (.github/workflows/model-eval.yml); the app does not need these.
+# torch (CPU) is installed separately from the PyTorch index.
+git+https://github.com/microsoft/MoGe.git
+git+https://github.com/cvg/GeoCalib.git
+diffusers>=0.33
+transformers>=4.44
+accelerate
+huggingface_hub
+requests

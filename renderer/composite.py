@@ -8,9 +8,14 @@ Pipeline per surface (each step after 2 can be switched off with RenderOptions, 
 change can be judged before/after on the same photo):
   1. Build a texture the size of the surface in millimetres (see texture.py).
   2. Warp it through the plane homography (surface quad in the photo <-> mm rectangle),
-     supersampled 2x so far-away texture doesn't shimmer.
+     supersampled 2x so far-away texture doesn't shimmer. A countertop's front edge and
+     visible ends are textured as their own faces, the pattern wrapping over the edge
+     (faces.py, v3).
   3. Relight it with the room's lighting only: a robust, edge-preserving shading map
-     that drops the old surface's own pattern, logos and specks.
+     that drops the old surface's own pattern, logos and specks. Light far above the
+     surface's median is the old surface's shine: it is added back as light scaled by
+     the new finish's gloss instead of multiplied into the new colour (v3). Faces take
+     the light from the top just above them, times their orientation and profile shape.
   4. Tint it with the room's light colour, taken from the photo's near-white pixels.
   5. Glossy finishes reflect the wall behind them, perspective-correct: the wall plane
      mirrored in the counter plane, blurred and faded with distance.
@@ -43,14 +48,22 @@ class RenderOptions:
     grain: bool = True
     supersample: bool = True
     fill_specks: bool = True
+    slab_faces: bool = True     # v3: countertop front edge and ends drawn as their own faces
+    glare_split: bool = True    # v3: the old surface's shine is not multiplied into the new finish
 
     @classmethod
     def v1(cls) -> "RenderOptions":
         """The first prototype's renderer, kept for before/after comparisons."""
-        return cls(False, False, False, False, False, False, False, False)
+        return cls(False, False, False, False, False, False, False, False, False, False)
+
+    @classmethod
+    def v2(cls) -> "RenderOptions":
+        """composite-v2 (29 Sep): v1 plus lighting, reflections, shadows, edges and grain."""
+        return cls(slab_faces=False, glare_split=False)
 
 
-V2 = RenderOptions()
+V3 = RenderOptions()
+V2 = RenderOptions.v2()
 
 
 @dataclass
@@ -85,6 +98,8 @@ class Surface:
     shading_sigma: float = 22.0
     gloss: float = 0.0
     mirror_wall: tuple[list[Point], int, int] | None = None
+    glare_cap: float = 0.3  # v3: light above 1 + cap (relative to the surface median) counts as the old shine
+    focal_px: float | None = None  # the camera's focal length when the photo's EXIF gave a trustworthy one
 
 
 def srgb_to_linear(img_u8: np.ndarray) -> np.ndarray:
@@ -230,6 +245,21 @@ def clean_shading(lin: np.ndarray, mask: np.ndarray, sigma: float) -> np.ndarray
     return np.clip(shading, 0.5, 1.8).astype(np.float32)
 
 
+def split_glare(shading: np.ndarray, cap: float) -> tuple[np.ndarray, np.ndarray]:
+    """Split relative shading into the light a new finish receives and the old surface's shine.
+
+    The shading map is the photo's light on the old surface relative to its median, so on a
+    dark, glossy counter the lamps' reflection shows up as shading of 1.5-2.5x. Multiplied into
+    a light finish that becomes a milky haze. Up to 1 + cap the light passes as it is; above it
+    a soft knee bends it towards 1 + cap, and the rest is returned separately. A specular
+    reflection hardly depends on the surface's colour, so the caller adds that rest back as
+    light (scaled by the new finish's gloss), not as a multiplier on the new albedo.
+    """
+    over = np.clip(shading - 1.0, 0.0, None)
+    diffuse = np.where(shading > 1.0, 1.0 + cap * np.tanh(over / max(cap, 1e-6)), shading)
+    return diffuse.astype(np.float32), (shading - diffuse).astype(np.float32)
+
+
 def light_tint(lin: np.ndarray, strength: float = 0.5) -> np.ndarray:
     """Colour of the room's light, from its brightest near-neutral pixels (walls, cabinets)."""
     lum = _luminance(lin)
@@ -272,9 +302,10 @@ def _wall_mirror(surface: Surface) -> np.ndarray | None:
 def view_cosine(surface: Surface, shape: tuple[int, int]) -> np.ndarray:
     """cos(angle between the view ray and the surface normal) per pixel.
 
-    The focal length is recovered from the plane homography (square pixels, principal
-    point at the centre): the plane's two axes must map to perpendicular, equal-length
-    directions. When that fails a typical phone focal length is assumed.
+    The focal length comes from the photo's EXIF when it was trustworthy (backend/app/
+    camera.py); otherwise it is recovered from the plane homography (square pixels,
+    principal point at the centre: the plane's two axes must map to perpendicular
+    directions), and when that fails a typical phone focal length is assumed.
     """
     h, w = shape
     H = plane_homography(surface.quad, surface.width_mm, surface.height_mm)
@@ -287,6 +318,8 @@ def view_cosine(surface: Surface, shape: tuple[int, int]) -> np.ndarray:
         v = -(h1[0] * h2[0] + h1[1] * h2[1]) / den
         if v > 0:
             f2 = v
+    if surface.focal_px:
+        f2 = float(surface.focal_px) ** 2
     if f2 is None or not (0.3 * max(w, h)) ** 2 < f2 < (4.0 * max(w, h)) ** 2:
         f2 = (1.1 * max(w, h)) ** 2
     Kinv = np.diag([1 / np.sqrt(f2), 1 / np.sqrt(f2), 1.0])
@@ -413,17 +446,39 @@ def _warp(texture_bgr: np.ndarray, H: np.ndarray, size: tuple[int, int], mask: n
     return out
 
 
+def _remap_mip(texture_bgr: np.ndarray, map_u: np.ndarray, map_v: np.ndarray, sel: np.ndarray) -> np.ndarray:
+    """Sample the texture at (map_u, map_v) for the selected pixels, from a coarser copy where the
+    face squeezes many texture pixels into one image pixel (a receding edge), so it doesn't alias."""
+    du = np.abs(np.gradient(map_u, axis=1)) + np.abs(np.gradient(map_v, axis=1))
+    out = np.zeros(map_u.shape + (3,), np.uint8)
+    level_tex, scale = texture_bgr, 1.0
+    for level in range(4):
+        lo, hi = (0.0 if level == 0 else 2.0 ** level), (2.0 ** (level + 1) if level < 3 else np.inf)
+        pick = sel & (du >= lo) & (du < hi)
+        if pick.any():
+            s = cv2.remap(level_tex, (map_u * scale).astype(np.float32), (map_v * scale).astype(np.float32),
+                          cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+            out[pick] = s[pick]
+        level_tex, scale = cv2.pyrDown(level_tex), scale / 2.0
+    return out
+
+
 def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.ndarray,
                       exposure: float = 0.92, mask: np.ndarray | None = None,
-                      options: RenderOptions = V2, original_bgr: np.ndarray | None = None,
-                      ) -> tuple[np.ndarray, np.ndarray]:
+                      options: RenderOptions = V3, original_bgr: np.ndarray | None = None,
+                      tex_px_per_mm: float | None = None, tex_origin_mm: tuple[float, float] = (0.0, 0.0),
+                      faces=None) -> tuple[np.ndarray, np.ndarray]:
     """Return (new photo, mask) with one surface replaced by the finish texture.
 
     `photo_bgr` is the image so far (earlier surfaces already replaced: reflections
     show them). `original_bgr` is the untouched photo, which lighting, noise and edges
     are measured on; it defaults to `photo_bgr`.
-    `texture_bgr` covers the surface's width_mm x height_mm at a uniform scale.
+    `texture_bgr` covers the surface's width_mm x height_mm at a uniform scale; with
+    `tex_px_per_mm` it may be larger, its pixel (0, 0) sitting at `tex_origin_mm` before
+    the surface's corner (room for the countertop's faces to continue the pattern).
     `mask`, when given (e.g. from SAM 3 or a user outline), replaces the polygon region.
+    `faces` (renderer.faces.FaceMap) marks the countertop's front and end faces; they are
+    textured and lit as faces, and any predicted band is added to the returned mask.
     """
     original = photo_bgr if original_bgr is None else original_bgr
     h, w = photo_bgr.shape[:2]
@@ -433,24 +488,53 @@ def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.n
         mask = np.where(mask > 0, 255, 0).astype(np.uint8)
     if options.fill_specks:
         mask = fill_specks(mask)
+    if faces is not None and not options.slab_faces:
+        faces = None
+    face = faces.mask > 0 if faces is not None else np.zeros((h, w), bool)
+    if faces is not None:
+        mask = np.where(face, 255, mask).astype(np.uint8)
+    top_mask = np.where(face, 0, mask).astype(np.uint8)
+
     tex_h, tex_w = texture_bgr.shape[:2]
-    H = plane_homography(surface.quad, tex_w, tex_h)
+    if tex_px_per_mm is None:
+        H = plane_homography(surface.quad, tex_w, tex_h)
+    else:
+        ox, oy = tex_origin_mm
+        A = np.array([[1.0 / tex_px_per_mm, 0, -ox], [0, 1.0 / tex_px_per_mm, -oy], [0, 0, 1]], np.float64)
+        H = plane_homography(surface.quad, surface.width_mm, surface.height_mm).astype(np.float64) @ A
     warped = _warp(texture_bgr, H, (w, h), mask, options.supersample)
+    if faces is not None and face.any():
+        face_tex = _remap_mip(texture_bgr, faces.map_u, faces.map_v, face)
+        warped[face] = face_tex[face]
 
     lin_orig = srgb_to_linear(original[..., ::-1])
     albedo = srgb_to_linear(warped[..., ::-1])
+    glare = None
     if options.clean_shading:
-        shading = clean_shading(lin_orig, mask, surface.shading_sigma)
+        shading = clean_shading(lin_orig, top_mask, surface.shading_sigma)
         highlights = np.zeros_like(shading)
+        if options.glare_split:
+            shading, excess = split_glare(shading, surface.glare_cap)
+            inside = top_mask > 0
+            old_level = float(np.median(_luminance(lin_orig)[inside])) if np.any(inside) else 0.0
+            keep = min(1.0, max(0.15, surface.gloss / 0.45)) if surface.surface_class == "countertop" else 0.25
+            glare = excess * old_level * keep
     else:
-        shading, highlights = shading_and_highlights(lin_orig, mask, surface.shading_sigma, surface.glossy)
+        shading, highlights = shading_and_highlights(lin_orig, top_mask, surface.shading_sigma, surface.glossy)
     if options.contact_shadows:
-        shading = shading * contact_occlusion(surface, mask)
+        shading = shading * contact_occlusion(surface, top_mask)
+    if faces is not None and face.any():
+        light = cv2.remap(shading, faces.sample_x, faces.sample_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        shading = np.where(face, light * faces.shade, shading).astype(np.float32)
+        if glare is not None:
+            glare = np.where(face, 0.0, glare)
     relit = albedo * shading[..., None] * exposure + highlights[..., None]
+    if glare is not None:
+        relit = relit + glare[..., None]
     if options.light_tint:
         relit = relit * light_tint(lin_orig)[None, None, :]
     if options.reflections and surface.gloss > 0:
-        refl, k = reflection(srgb_to_linear(photo_bgr[..., ::-1]), surface, mask)
+        refl, k = reflection(srgb_to_linear(photo_bgr[..., ::-1]), surface, top_mask)
         relit = relit * (1 - k[..., None]) + refl * k[..., None]
     over = np.clip(relit - 0.8, 0.0, None)
     relit = np.where(relit > 0.8, 0.8 + over / (1.0 + 2.5 * over), relit)  # soft shoulder keeps white finishes textured
@@ -493,5 +577,5 @@ def mask_polygon(mask: np.ndarray, epsilon_px: float = 2.0) -> list[list[int]]:
     return [[int(p[0][0]), int(p[0][1])] for p in c]
 
 
-__all__ = ["RenderOptions", "V2", "Surface", "composite_surface", "assert_outside_unchanged", "mask_polygon",
+__all__ = ["RenderOptions", "V2", "V3", "Surface", "composite_surface", "assert_outside_unchanged", "mask_polygon",
            "replace"]

@@ -15,16 +15,18 @@ import numpy as np
 
 @dataclass
 class Detection:
-    surface_class: str   # countertop | backsplash
+    surface_class: str   # countertop | backsplash | object (something standing on or in front of a surface)
     mask: np.ndarray     # uint8 HxW, 255 inside
     score: float
     quad: list | None = None  # plane corners when the detector knows them (fixtures); else fitted from the mask
+    label: str | None = None  # for objects: what it is ("faucet", "sink", "bottle"...)
 
 
 class SurfaceDetector(Protocol):
     model_id: str
 
-    def detect(self, image_bgr: np.ndarray) -> list[Detection]: ...
+    def detect(self, image_bgr: np.ndarray, objects: list[str] | None = None) -> list[Detection]:
+        """Countertop and backsplash surfaces, and the named objects standing on or in front of them."""
 
 
 class KitchenDescriber(Protocol):

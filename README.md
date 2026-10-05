@@ -57,11 +57,11 @@ On the design review, **Compartir** makes a read-only link to that design (rende
 | Step | What runs | Model? |
 |---|---|---|
 | Photo checks | Brightness, sharpness, camera data (`photo_checks.py`) | No |
-| Find surfaces | SAM 3 on fal.ai, prompted "kitchen countertop" and "kitchen backsplash"; the outline becomes four draggable corners | SAM 3 |
-| Describe the kitchen | Claude looks at cabinets, floor and walls, for the suggestions | Claude Sonnet 5.5 |
+| Describe the kitchen | Claude looks at cabinets, floor and walls, for the suggestions, and lists every object on or in front of the countertop and backsplash | Claude Sonnet 5.5 |
+| Find surfaces and objects | SAM 3 on fal.ai, prompted "kitchen countertop", "kitchen backsplash" and each object Claude listed (plus sink, cooktop, faucet); objects are cut out of the surfaces; the outline becomes four draggable corners | SAM 3 |
 | Suggest finishes | Claude picks 3 combinations from the available Kober finishes, answering in JSON whose schema only allows catalogue ids (structured outputs) | Claude Sonnet 5.5 |
 | Four styles at once | For each preset (Minimalista, Cálido natural, Contraste, Creativo, `styles.py`), one suggestion is rendered and priced like any design | Claude Sonnet 5.5 |
-| Render | Finish image grown into a large non-repeating texture, warped onto each surface at real size, room lighting kept, plus reflections, contact shadows and matched grain (`renderer/`, `composite-v2`) | **No**: deterministic |
+| Render | Finish image grown into a large non-repeating texture, warped onto each surface at real size; the countertop drawn as a slab with its front edge and ends at the profile's thickness; room lighting kept without the old surface's glare, plus reflections, contact shadows and matched grain (`renderer/`, `composite-v3`) | **No**: deterministic |
 | Quote | Standard piece lengths per run, Spläsh panels, allowance, installation, IVA, estimate range (`quote.py`), from the team's price sheet | **No** |
 | Final quote | The team's measurements, priced the same way with `final=True` (`staff.py`) | **No** |
 
@@ -98,7 +98,7 @@ Spanish first, with an English toggle. Design tokens (warm neutrals, one clay ac
 
 - **L-shaped counters and islands:** each run needs its own surface (one detected mask per run). L-shapes haven't been tested on real photos yet.
 - **Hand-placed surfaces** repaint everything inside the corners, including objects standing on the counter.
-- **Edge profile** changes the price, not the render.
+- **Edge profile** changes the edge's shape in the render (rounded or square), but the edge keeps the thickness it has in the photo.
 - **Not included yet:** sinks aren't re-rendered, no online payment, no customer accounts (the team shares one key), and everything runs as a single server process.
 
 ## Repo map
@@ -111,6 +111,7 @@ renderer/            compositor (homography, relighting, mask assertion) and tex
 catalog/kober/       PDF extractor, finishes.json (78 finishes), products.json, prices, price_sheet.py + template, placeholder swatches
 web/                 React app; styles.css holds the tokens; esbuild build; Playwright smoke and screens tests
 samples/             sample photo, offline fixtures, make_demo_assets.py (landing demo), compare_renders.py
+research/model_eval/ GitHub test run for candidate models (MoGe-2, GeoCalib, Marigold-IID) on free-licence kitchen photos
 ```
 
 `DECISIONS.md` lists where the prototype deliberately departs from the long-term spec. `PROTOTYPE-PLAN.md` has the plan to 28 Oct.
