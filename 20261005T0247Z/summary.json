@@ -1,0 +1,346 @@
+{
+ "models": {
+  "moge2": "Ruicheng/moge-2-vitb-normal",
+  "geocalib": "GeoCalib (pinhole)",
+  "marigold": "prs-eth/marigold-iid-lighting-v1-1"
+ },
+ "load": {
+  "moge2": {
+   "loaded_s": 8.4
+  },
+  "geocalib": {
+   "loaded_s": 4.0
+  },
+  "marigold": {
+   "loaded_s": 31.1
+  }
+ },
+ "photos": [
+  {
+   "file": "00_kober_p7.jpg",
+   "size": [
+    1280,
+    800
+   ],
+   "attribution": {
+    "file": "00_kober_p7.jpg",
+    "title": "Kober catalogue page 7 kitchen (repo sample)",
+    "licence": "Kober catalogue image, used internally",
+    "source": "samples/kober_photos"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 907,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "error": "RuntimeError: Input type (c10::Half) and bias type (float) should be the same"
+   },
+   "geocalib": {
+    "focal_px": 830.6736653645833,
+    "roll_deg": -0.14,
+    "pitch_deg": -0.33,
+    "focal_uncertainty": 377.5277,
+    "vfov_uncertainty": 0.335,
+    "roll_uncertainty": 0.0112,
+    "pitch_uncertainty": 0.0212,
+    "seconds": 1.5,
+    "fov_deg": 75.2
+   },
+   "marigold": {
+    "seconds": 51.7,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "01_Se_or_preparando_esquites_jpg.jpg",
+   "size": [
+    1280,
+    853
+   ],
+   "attribution": {
+    "file": "01_Se_or_preparando_esquites_jpg.jpg",
+    "title": "File:Señor preparando esquites.jpg",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/Se%C3%B1or_preparando_esquites.jpg/1920px-Se%C3%B1or_preparando_esquites.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Se%C3%B1or_preparando_esquites.jpg",
+    "licence": "Public domain",
+    "author": "Viritrudis",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 924,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "error": "RuntimeError: Input type (c10::Half) and bias type (float) should be the same"
+   },
+   "geocalib": {
+    "focal_px": 1695.15625,
+    "roll_deg": -1.07,
+    "pitch_deg": -6.69,
+    "focal_uncertainty": 582.3192,
+    "vfov_uncertainty": 0.1533,
+    "roll_uncertainty": 0.0183,
+    "pitch_uncertainty": 0.0549,
+    "seconds": 1.7,
+    "fov_deg": 41.4
+   },
+   "marigold": {
+    "seconds": 55.4,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "02_DISE_O_VADILLO_jpg.jpg",
+   "size": [
+    1280,
+    873
+   ],
+   "attribution": {
+    "file": "02_DISE_O_VADILLO_jpg.jpg",
+    "title": "File:DISEÑO VADILLO.jpg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/d/d2/DISE%C3%91O_VADILLO.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:DISE%C3%91O_VADILLO.jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Arq",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 931,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "error": "RuntimeError: Input type (c10::Half) and bias type (float) should be the same"
+   },
+   "geocalib": {
+    "focal_px": 1384.0782547449585,
+    "roll_deg": 0.07,
+    "pitch_deg": -0.71,
+    "focal_uncertainty": 824.6534,
+    "vfov_uncertainty": 0.367,
+    "roll_uncertainty": 0.0099,
+    "pitch_uncertainty": 0.0316,
+    "seconds": 1.6,
+    "fov_deg": 49.6
+   },
+   "marigold": {
+    "seconds": 56.6,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "03_2013_12_29_K_che_in_Zinacantan_Chiapas_anagoria_JP.jpg",
+   "size": [
+    1280,
+    853
+   ],
+   "attribution": {
+    "file": "03_2013_12_29_K_che_in_Zinacantan_Chiapas_anagoria_JP.jpg",
+    "title": "File:2013-12-29 Küche in Zinacantan Chiapas anagoria.JPG",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/2013-12-29_K%C3%BCche_in_Zinacantan_Chiapas_anagoria.JPG/1920px-2013-12-29_K%C3%BCche_in_Zinacantan_Chiapas_anagoria.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:2013-12-29_K%C3%BCche_in_Zinacantan_Chiapas_anagoria.JPG",
+    "licence": "CC BY 3.0",
+    "author": "Anagoria",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 924,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "error": "RuntimeError: Input type (c10::Half) and bias type (float) should be the same"
+   },
+   "geocalib": {
+    "focal_px": 1092.961669921875,
+    "roll_deg": -0.73,
+    "pitch_deg": -9.07,
+    "focal_uncertainty": 190.1992,
+    "vfov_uncertainty": 0.1112,
+    "roll_uncertainty": 0.02,
+    "pitch_uncertainty": 0.0382,
+    "seconds": 1.4,
+    "fov_deg": 60.7
+   },
+   "marigold": {
+    "seconds": 55.6,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "04_ParicutinMichoacan003_JPG.jpg",
+   "size": [
+    1280,
+    851
+   ],
+   "attribution": {
+    "file": "04_ParicutinMichoacan003_JPG.jpg",
+    "title": "File:ParicutinMichoacan003.JPG",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/ParicutinMichoacan003.JPG/1920px-ParicutinMichoacan003.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:ParicutinMichoacan003.JPG",
+    "licence": "CC BY-SA 4.0",
+    "author": "AlejandroLinaresGarcia",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 924,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "error": "RuntimeError: Input type (c10::Half) and bias type (float) should be the same"
+   },
+   "geocalib": {
+    "focal_px": 1156.7830403645833,
+    "roll_deg": 0.41,
+    "pitch_deg": -4.55,
+    "focal_uncertainty": 406.3721,
+    "vfov_uncertainty": 0.2147,
+    "roll_uncertainty": 0.0332,
+    "pitch_uncertainty": 0.0632,
+    "seconds": 1.4,
+    "fov_deg": 57.9
+   },
+   "marigold": {
+    "seconds": 55.0,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "05_LasTunasTelchac002_JPG.jpg",
+   "size": [
+    1280,
+    851
+   ],
+   "attribution": {
+    "file": "05_LasTunasTelchac002_JPG.jpg",
+    "title": "File:LasTunasTelchac002.JPG",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/LasTunasTelchac002.JPG/1920px-LasTunasTelchac002.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:LasTunasTelchac002.JPG",
+    "licence": "CC BY-SA 4.0",
+    "author": "AlejandroLinaresGarcia",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "default",
+    "focal_35mm": 26.0,
+    "focal_px": 924,
+    "lens": "main",
+    "reason": "no 35 mm-equivalent focal length",
+    "make": null,
+    "model": null
+   },
+   "moge2": {
+    "error": "RuntimeError: Input type (c10::Half) and bias type (float) should be the same"
+   },
+   "geocalib": {
+    "focal_px": 946.07568359375,
+    "roll_deg": 0.99,
+    "pitch_deg": -2.66,
+    "focal_uncertainty": 245.1719,
+    "vfov_uncertainty": 0.1828,
+    "roll_uncertainty": 0.013,
+    "pitch_uncertainty": 0.0257,
+    "seconds": 1.4,
+    "fov_deg": 68.2
+   },
+   "marigold": {
+    "seconds": 55.1,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  },
+  {
+   "file": "06_Residencial_corales_panoramio_Humberto_Aranda_Migo.jpg",
+   "size": [
+    1280,
+    960
+   ],
+   "attribution": {
+    "file": "06_Residencial_corales_panoramio_Humberto_Aranda_Migo.jpg",
+    "title": "File:Residencial corales - panoramio - Humberto Aranda Migo… (5).jpg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/1/13/Residencial_corales_-_panoramio_-_Humberto_Aranda_Migo%E2%80%A6_%285%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:Residencial_corales_-_panoramio_-_Humberto_Aranda_Migo%E2%80%A6_(5).jpg",
+    "licence": "CC BY-SA 3.0",
+    "author": "Humberto Aranda Migo…",
+    "source": "Category:Kitchens in Mexico"
+   },
+   "exif": {
+    "source": "exif",
+    "focal_35mm": 36.0,
+    "focal_px": 1331,
+    "lens": "tele",
+    "reason": null,
+    "make": "NIKON",
+    "model": "E2200"
+   },
+   "moge2": {
+    "error": "RuntimeError: Input type (c10::Half) and bias type (float) should be the same"
+   },
+   "geocalib": {
+    "focal_px": 1237.0050781250002,
+    "roll_deg": -0.03,
+    "pitch_deg": -0.89,
+    "focal_uncertainty": 434.4843,
+    "vfov_uncertainty": 0.268,
+    "roll_uncertainty": 0.012,
+    "pitch_uncertainty": 0.0346,
+    "seconds": 1.1,
+    "fov_deg": 54.7
+   },
+   "marigold": {
+    "seconds": 62.0,
+    "targets": [
+     "albedo",
+     "shading",
+     "residual"
+    ]
+   }
+  }
+ ]
+}
