@@ -32,7 +32,8 @@ from .jobs import JobHub
 from .camera import camera_from_exif
 from .photo_checks import check_photo
 from .pipeline import Ctx, FlowError, analyse, design, style_board, suggest
-from .quote import QuoteError
+from .quote import QuoteError, visit_fee
+from .render import edge_shape
 from .schemas import (AnalyseIn, BookingIn, BookingUpdateIn, DesignIn, MeasurementsIn, StyleBoardIn, SuggestIn,
                       SurfacesIn, VisitIn, plausibility_questions)
 from .staff import media_ok, signed_media_url, visit_result, whatsapp_number
@@ -93,9 +94,10 @@ def create_app(settings: Settings | None = None) -> Starlette:
     async def catalogue(request: Request):
         return JSONResponse({
             "finishes": [f.public() | {"available": cat.available(f.id)} for f in cat.finishes.values()],
-            "profiles": list(cat.profiles.values()),
+            "profiles": [p | {"edge_shape": edge_shape(p)} for p in cat.profiles.values()],
             "currency": cat.currency, "price_list_status": cat.price_status, "styles": public_styles(),
             "placeholder_swatches": cat.placeholder_swatches,
+            "visit_fee": visit_fee(cat).to_json(), "visit_fee_rule": "free_if_hired",
         })
 
     async def create_project(request: Request):

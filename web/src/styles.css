@@ -637,6 +637,40 @@ select {
 @keyframes chip-in { from { opacity: 0; transform: translate(-50%, calc(-100% - 14px)); } to { opacity: 1; transform: translate(-50%, calc(-100% - 22px)); } }
 .hot-chip-below { transform: translate(-50%, 22px); animation-name: chip-in-below; }
 @keyframes chip-in-below { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 22px); } }
+/* Price tags: a dot on the item and a pill beside it, laid out in CSS pixels by placeTags() so
+   they keep one size on every screen and never cover each other. Dark glass reads on light and
+   dark finishes alike; the selected tag takes the accent. */
+.ptags { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.ptag-leaders { position: absolute; inset: 0; overflow: visible; }
+.ptag-leaders line { stroke: rgb(255 255 255 / 0.8); stroke-width: 1.25px; filter: drop-shadow(0 0 1.5px rgb(0 0 0 / 0.6)); }
+.pdot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 999px; background: #fff; cursor: pointer;
+  pointer-events: auto; box-shadow: 0 0 0 2.5px rgb(23 21 18 / 0.6), 0 2px 8px rgb(0 0 0 / 0.45); transition: transform var(--t-micro); }
+.pdot::after { content: ""; position: absolute; inset: -12px; border-radius: 999px; } /* 36px to tap */
+.pdot-on { background: rgb(var(--c-accent-fill)); transform: scale(1.15); }
+.pdot-pulse::before { content: ""; position: absolute; inset: -6px; border-radius: 999px; background: rgb(255 255 255 / 0.5);
+  animation: pdot-pulse 2.4s ease-out 3; opacity: 0; }
+@keyframes pdot-pulse { 0% { opacity: 0.8; transform: scale(0.5); } 70%, 100% { opacity: 0; transform: scale(1.6); } }
+.ptag {
+  position: absolute; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border-radius: 999px; white-space: nowrap;
+  font: inherit; font-size: 12.5px; line-height: 1; color: #fff; cursor: pointer; pointer-events: auto;
+  background: rgb(23 21 18 / 0.78); border: 1px solid rgb(255 255 255 / 0.16); box-shadow: 0 8px 20px -8px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  transition: background-color var(--t-micro), color var(--t-micro), border-color var(--t-micro);
+  animation: ptag-in var(--t-enter) var(--ease-enter) both;
+}
+.ptag:hover { background: rgb(23 21 18 / 0.92); border-color: rgb(255 255 255 / 0.32); }
+.ptag:focus-visible { outline: 2px solid rgb(var(--a-300)); outline-offset: 2px; }
+.ptag-label { opacity: 0.82; }
+.ptag-value { font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.ptag-on, .ptag-on:hover { background: rgb(var(--c-accent-fill)); color: rgb(var(--c-accent-fill-label)); border-color: transparent; }
+.ptag-on .ptag-label { opacity: 0.75; }
+.ptags-compact .ptag { font-size: 11.5px; padding: 0 9px; }
+@keyframes ptag-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.canvas-busy .canvas-after { filter: saturate(0.6) brightness(0.8); transition: filter var(--t-base); }
+.canvas-busy .ptags { opacity: 0.35; pointer-events: none; }
+.canvas-busy-note { position: absolute; left: 50%; bottom: 16px; z-index: 3; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px; font-size: 13px; color: #fff; background: rgb(23 21 18 / 0.82);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: fade-up var(--t-base) var(--ease-enter) both; }
 .tag { position: absolute; top: 14px; z-index: 2; padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 500; pointer-events: none;
   background: rgb(23 21 18 / 0.6); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .tag-left { left: 14px; }
@@ -675,6 +709,38 @@ select {
 .design-rows strong { font-size: 14.5px; line-height: 1.35; }
 .design-rows svg { color: rgb(var(--c-text-muted)); flex-shrink: 0; }
 .design-rows .swatch { width: 44px; height: 44px; border-radius: 10px; }
+.design-rows .grow { flex: 1; min-width: 0; }
+.design-rows .row-price { font-size: 13.5px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.swatch-icon { display: grid; place-items: center; color: rgb(var(--c-text-secondary)); }
+.item-price { display: flex; flex-direction: column; gap: 3px; margin: 8px 0 2px; padding: 12px 14px; border-radius: 14px;
+  background: rgb(var(--c-surface-subtle)); border: 1px solid rgb(var(--c-hairline)); }
+.item-price strong { font-size: 20px; font-weight: 500; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; }
+.edge-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 10px 12px; margin-top: 4px;
+  text-align: left; cursor: pointer; border-radius: 12px; border: 1px solid rgb(var(--c-hairline)); background: transparent; color: inherit; font: inherit; }
+.edge-link:hover { border-color: rgb(var(--c-hairline-strong)); }
+.edge-link > span:first-child { display: flex; flex-direction: column; }
+.edge-link strong { font-size: 14px; font-weight: 500; }
+.edge-link .small { display: inline-flex; align-items: center; gap: 4px; color: rgb(var(--c-accent-text)); white-space: nowrap; }
+.sheet-art { display: grid; place-items: center; height: 150px; margin-bottom: 8px; border-radius: var(--r-lg);
+  background: radial-gradient(120% 90% at 50% 0%, rgb(var(--c-surface-raised)), rgb(var(--c-surface-subtle))); border: 1px solid rgb(var(--c-hairline)); }
+.sheet-art .edge-drawing { width: 62%; height: auto; }
+.sheet-art-icon svg { width: 56px; height: 56px; color: rgb(var(--c-text-secondary)); }
+.edge-drawing path { fill: rgb(var(--c-text-secondary) / 0.9); }
+.edge-drawing .edge-ground { stroke: rgb(var(--c-hairline-strong)); stroke-width: 1.5; stroke-dasharray: 3 4; }
+.edge-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.edge-options button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px 8px 8px; text-align: left; cursor: pointer; font: inherit;
+  color: inherit; border-radius: 14px; border: 1px solid rgb(var(--c-hairline)); background: rgb(var(--c-surface-raised));
+  transition: border-color var(--t-micro), background-color var(--t-micro); }
+.edge-options button:hover:not(:disabled) { border-color: rgb(var(--c-hairline-strong)); }
+.edge-options button.on { border-color: rgb(var(--a-400)); background: rgb(var(--a-400) / 0.1); }
+.edge-options .edge-drawing { width: 64px; height: 36px; flex-shrink: 0; border-radius: 8px; background: rgb(var(--c-surface-subtle)); padding: 2px 6px; }
+.edge-options .grow { display: flex; flex-direction: column; flex: 1; }
+.edge-options strong { font-size: 14px; font-weight: 500; }
+.diff { font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.diff-down { color: var(--ok-fg); }
+.visit-note { margin: 6px 0 2px; padding: 10px 14px; border-radius: 12px; background: var(--info-bg); color: var(--info-fg); }
+table.totals tr.visit-row td { font-weight: 400; }
+table.totals tr.visit-row td.num { color: var(--ok-fg); font-weight: 500; }
 .quote-card > .btn-accent { margin-top: 6px; }
 .quote-full { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; animation: fade-up var(--t-enter) var(--ease-enter) both; }
 .quote-full .caption { margin-top: 12px; }

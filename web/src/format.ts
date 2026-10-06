@@ -15,6 +15,17 @@ export function moneyRange(low: MoneyJ, high: MoneyJ, lang: Lang, approx: string
   return a === b ? `${approx} ${a}` : `${a} – ${b} ${low.currency}`;
 }
 
+// For the labels on the render: "$7,400–$8,200", or one figure once the price is final.
+export function moneyCompact(low: MoneyJ, high: MoneyJ, lang: Lang): string {
+  const a = money(low, lang), b = money(high, lang);
+  return a === b ? a : `${a}–${b}`;
+}
+
+// A price difference, "+$940" or "−$313"; zero is the caller's "same price".
+export function signedMoney(m: MoneyJ, lang: Lang): string {
+  return `${m.minor > 0 ? "+" : "−"}${money({ minor: Math.abs(m.minor), currency: m.currency }, lang)}`;
+}
+
 // Centimetres typed by the customer -> integer millimetres, or null if not a number.
 export function cmToMm(text: string): number | null {
   const v = Number(String(text).replace(",", ".").trim());

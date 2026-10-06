@@ -239,8 +239,12 @@ def build_prices(tabs: dict[str, list[dict]], cat: Catalogue, source: str) -> tu
     tax_confirmed = yes_no(setting("iva_confirmado"), "Ajustes iva_confirmado", errors)
     waste_top = percent_bp(setting("merma_cubierta_%"), "Ajustes merma_cubierta_%", errors, max_pct=50)
     waste_splash = percent_bp(setting("merma_splash_%"), "Ajustes merma_splash_%", errors, max_pct=50)
-    fees = {ft: money_minor(setting(f"cuota_visita_{ft.lower()}"), f"Ajustes cuota_visita_{ft}", errors)
-            for ft in ("SELF", "MANAGED")}
+    # One flat fee for the measuring visit, charged only if the customer doesn't hire the job.
+    # Older sheets had a fee per service type; their "instalamos nosotros" fee is taken.
+    if "cuota_visita" in settings:
+        visit_fee = money_minor(settings["cuota_visita"], "Ajustes cuota_visita", errors)
+    else:
+        visit_fee = money_minor(setting("cuota_visita_managed"), "Ajustes cuota_visita", errors)
 
     def net(minor: int | None) -> int | None:
         """Sheet amounts that include IVA are stored without it; the quote adds IVA once."""
@@ -378,7 +382,7 @@ def build_prices(tabs: dict[str, list[dict]], cat: Catalogue, source: str) -> tu
         "splash_panel_minor": {c: dict(sorted(v.items())) for c, v in panels.items() if v},
         "margin_bp": margins,
         "labour_minor": labour,
-        "booking_fee_minor": fees,
+        "visit_fee_minor": visit_fee,
         "owner": settings.get("responsable", ""),
     }
     digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()[:8]
@@ -415,8 +419,8 @@ def template_rows(cat: Catalogue) -> dict[str, list[list]]:
         ["iva_confirmado", "no", "si = el cliente ve 'IVA incluido'; no = se marca por confirmar"],
         ["merma_cubierta_%", "10", "merma por cortes añadida a cada tramo de cubierta"],
         ["merma_splash_%", "10", "merma por cortes añadida a cada tramo de Spläsh"],
-        ["cuota_visita_SELF", pesos(p["booking_fee_minor"]["SELF"]), "cuota de la visita de medición, el cliente instala"],
-        ["cuota_visita_MANAGED", pesos(p["booking_fee_minor"]["MANAGED"]), "cuota de la visita, instalamos nosotros"],
+        ["cuota_visita", pesos(p["visit_fee_minor"]),
+         "visita de medición: sin costo si el cliente contrata la obra; si no, se cobra esta cuota (más IVA)"],
         ["responsable", "", "quién mantiene estos precios"],
     ]
     rows["Cubiertas"] = [["categoria", "ancho_mm", "largo_mm", "costo_kober_original_q", "nota"]]

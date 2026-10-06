@@ -116,7 +116,46 @@ class QuoteLine:
             "group": self.group, "kind": self.kind, "surface": self.surface, "description": self.description,
             "qty": self.qty, "unit": self.unit, "unit_price": self.unit_price.to_json(),
             "total": self.total.to_json(), "detail": self.detail, "finish_id": self.finish_id,
+            "item": _item_of(self),
         }
+
+
+ITEM_ORDER = ("countertop", "sink", "backsplash")
+
+
+@dataclass
+class QuoteItem:
+    """One thing the customer points at on the render, with its share of the quote, IVA included.
+
+    countertop: its pieces, installation and joints; sink: the cut-out and fitting;
+    backsplash: its Spläsh panels and installation. The items add up to the quote's total
+    exactly; while the quote is an estimate each item also carries its own range."""
+
+    item: str
+    subtotal: Money
+    tax: Money
+    total: Money
+    low: Money
+    high: Money
+
+    def to_json(self) -> dict:
+        return {"item": self.item, "subtotal": self.subtotal.to_json(), "tax": self.tax.to_json(),
+                "total": self.total.to_json(), "low": self.low.to_json(), "high": self.high.to_json()}
+
+
+@dataclass
+class ProfileOption:
+    """Another edge profile the countertop finish is made in, and what it would change."""
+
+    profile_id: str
+    name: str
+    display: str
+    total: Money
+    difference: Money   # against the quoted profile, at the measured lengths, IVA included
+
+    def to_json(self) -> dict:
+        return {"profile_id": self.profile_id, "name": self.name, "display": self.display,
+                "total": self.total.to_json(), "difference": self.difference.to_json()}
 
 
 @dataclass
@@ -131,11 +170,13 @@ class Quote:
     total: Money
     estimate_low: Money
     estimate_high: Money
-    booking_fee: Money
+    visit_fee: Money    # the measuring visit, IVA included: free if the customer hires the job, else this flat fee
     scale_confidence: str
     estimate_only: bool
     price_list_status: str
     assumptions: list[str] = field(default_factory=list)
+    items: list[QuoteItem] = field(default_factory=list)
+    profile_options: list[ProfileOption] = field(default_factory=list)
 
     def to_json(self) -> dict:
         return {
@@ -145,13 +186,11 @@ class Quote:
             "subtotal": self.subtotal.to_json(), "tax": self.tax.to_json(), "tax_rate_bp": self.tax_rate_bp,
             "total": self.total.to_json(),
             "estimate": {"low": self.estimate_low.to_json(), "high": self.estimate_high.to_json()},
-            "booking_fee": self.booking_fee.to_json(),
-            "balance": {
-                "low": (self.estimate_low - self.booking_fee).to_json(),
-                "high": (self.estimate_high - self.booking_fee).to_json(),
-            },
+            "visit_fee": self.visit_fee.to_json(), "visit_fee_rule": "free_if_hired",
             "scale_confidence": self.scale_confidence, "estimate_only": self.estimate_only,
             "price_list_status": self.price_list_status, "assumptions": self.assumptions,
+            "items": [it.to_json() for it in self.items],
+            "profile_options": [p.to_json() for p in self.profile_options],
         }
 
 
@@ -363,6 +402,65 @@ def _totals(lines: list[QuoteLine], cat: Catalogue) -> tuple[Money, Money, Money
     return materials, labour, subtotal, tax, subtotal + tax
 
 
+def _item_of(line: QuoteLine) -> str:
+    return "sink" if line.kind == "sink_undermount" else (line.surface or "countertop")
+
+
+def _item_totals(lines: list[QuoteLine], cat: Catalogue) -> dict[str, tuple[Money, Money]]:
+    """(subtotal, tax) per item. Tax is worked out on each item and the rounding remainder goes
+    to the largest item, so the items always add up to the quote's own tax and total."""
+    cur, rate = cat.currency, cat.prices["tax"]["rate_bp"]
+    subs: dict[str, Money] = {}
+    for ln in lines:
+        key = _item_of(ln)
+        subs[key] = subs.get(key, Money.zero(cur)) + ln.total
+    if not subs:
+        return {}
+    taxes = {k: v.mul_ratio(rate, 10000) for k, v in subs.items()}
+    whole = sum_money(list(subs.values()), cur).mul_ratio(rate, 10000)
+    gap = whole - sum_money(list(taxes.values()), cur)
+    largest = max(subs, key=lambda k: subs[k].minor)
+    taxes[largest] = taxes[largest] + gap
+    return {k: (subs[k], taxes[k]) for k in subs}
+
+
+def _items(mid: list[QuoteLine], lo: list[QuoteLine] | None, hi: list[QuoteLine] | None, cat: Catalogue,
+           step_minor: int) -> list[QuoteItem]:
+    cur = cat.currency
+    at = _item_totals(mid, cat)
+    lo_t = _item_totals(lo, cat) if lo is not None else {}
+    hi_t = _item_totals(hi, cat) if hi is not None else {}
+    out = []
+    for key in sorted(at, key=lambda k: ITEM_ORDER.index(k) if k in ITEM_ORDER else len(ITEM_ORDER)):
+        sub, tax = at[key]
+        total = sub + tax
+        if lo is None:
+            low = high = total
+        else:
+            lo_sub, lo_tax = lo_t.get(key, (sub, tax))
+            hi_sub, hi_tax = hi_t.get(key, (sub, tax))
+            low, high = round_outward(min(lo_sub + lo_tax, total, key=lambda m: m.minor),
+                                      max(hi_sub + hi_tax, total, key=lambda m: m.minor), step_minor)
+        out.append(QuoteItem(key, sub, tax, total, low, high))
+    return out
+
+
+def profile_options(req: QuoteRequest, cat: Catalogue, total: Money) -> list[ProfileOption]:
+    """Every other profile the countertop finish is made in, priced the same way, against `total`."""
+    top = cat.finish(req.countertop_finish_id)
+    out = []
+    for pid, profile in cat.profiles.items():
+        if pid == req.profile_id:
+            continue
+        try:
+            cat.check_profile(top, pid)
+            alt_total = _totals(_price_lines(replace(req, profile_id=pid), cat)[0], cat)[4]
+        except (CatalogueError, QuoteError):
+            continue  # not made in that profile, or a piece the price sheet doesn't have
+        out.append(ProfileOption(pid, profile["name"], profile.get("display", ""), alt_total, alt_total - total))
+    return sorted(out, key=lambda o: o.difference.minor)
+
+
 def _scaled(req: QuoteRequest, ratio_bp: int) -> QuoteRequest:
     def s(mm: int) -> int:
         return max(100, div_round_half_up(mm * ratio_bp, 10000))
@@ -373,6 +471,13 @@ def _scaled(req: QuoteRequest, ratio_bp: int) -> QuoteRequest:
     )
 
 
+def visit_fee(cat: Catalogue) -> Money:
+    """The measuring visit, IVA included. Free when the customer hires the job; otherwise this flat fee."""
+    net = Money(cat.prices.get("visit_fee_minor", cat.prices.get("booking_fee_minor", {}).get("MANAGED", 0)),
+                cat.currency)
+    return net + net.mul_ratio(cat.prices["tax"]["rate_bp"], 10000)
+
+
 def price_quote(req: QuoteRequest, cat: Catalogue, final: bool = False) -> Quote:
     """Price a design. `final=True` is used only after a site visit with verified measurements."""
     _validate(req)
@@ -381,16 +486,19 @@ def price_quote(req: QuoteRequest, cat: Catalogue, final: bool = False) -> Quote
     materials, labour, subtotal, tax, total = _totals(lines, cat)
 
     tol = TOLERANCE_BP[confidence]
+    lo_lines = hi_lines = None
     if tol:
-        lo_total = _totals(_price_lines(_scaled(req, 10000 - tol), cat)[0], cat)[4]
-        hi_total = _totals(_price_lines(_scaled(req, 10000 + tol), cat)[0], cat)[4]
+        lo_lines = _price_lines(_scaled(req, 10000 - tol), cat)[0]
+        hi_lines = _price_lines(_scaled(req, 10000 + tol), cat)[0]
+        lo_total, hi_total = _totals(lo_lines, cat)[4], _totals(hi_lines, cat)[4]
         low = min(lo_total, total, key=lambda m: m.minor)
         high = max(hi_total, total, key=lambda m: m.minor)
         low, high = round_outward(low, high, RANGE_STEP_MINOR[confidence])
     else:
         low = high = total
+    items = _items(lines, lo_lines, hi_lines, cat, RANGE_STEP_MINOR[confidence])
 
-    fee = Money(cat.prices["booking_fee_minor"][req.fulfilment_type], cat.currency)
+    fee = visit_fee(cat)
     tx = TEXT.get(req.language, TEXT["en"])
     assumptions = list(notes)
     if cat.price_status != "LIVE":
@@ -402,6 +510,7 @@ def price_quote(req: QuoteRequest, cat: Catalogue, final: bool = False) -> Quote
     return Quote(
         currency=cat.currency, lines=lines, materials=materials, labour=labour, subtotal=subtotal,
         tax=tax, tax_rate_bp=cat.prices["tax"]["rate_bp"], total=total, estimate_low=low, estimate_high=high,
-        booking_fee=fee, scale_confidence=confidence, estimate_only=not final,
+        visit_fee=fee, scale_confidence=confidence, estimate_only=not final,
         price_list_status=cat.price_status, assumptions=assumptions,
+        items=items, profile_options=profile_options(req, cat, total),
     )

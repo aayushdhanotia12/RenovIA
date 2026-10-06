@@ -1,7 +1,7 @@
 // Sharing a design on WhatsApp, the read-only shared view, and the printable quote.
 import React, { useEffect, useState } from "react";
 import { api, type Design, type Finish, type Profile, type Quote, type SharedDesign } from "./api";
-import { CompareCanvas, QuoteLines, QuoteTotals, designLayers } from "./components";
+import { CompareCanvas, ItemRows, QuoteLines, QuoteTotals, designLayers, designPins } from "./components";
 import { money, moneyRange, splitCurrency, whatsappLink } from "./format";
 import { useLang } from "./lang";
 import { BrandMark, ErrorLine, Icon, Modal, Skeleton, go } from "./ui";
@@ -153,7 +153,8 @@ export function SharedView(props: { sid: string }) {
     <button className="btn btn-dark" style={{ marginTop: 16 }} onClick={() => go("#/")}>{t.designYours}</button></div>;
   if (!design) return <div className="review"><Skeleton height={520} radius={24} /></div>;
   const q = design.quote;
-  const layers = designLayers(design as unknown as Design, t);
+  const layers = designLayers(design, t);
+  const pins = designPins(design, t, lang);
   const [rangeMain, rangeCur] = splitCurrency(moneyRange(q.estimate.low, q.estimate.high, lang, t.approx));
   return (
     <section className="review" data-route="shared-design">
@@ -167,7 +168,7 @@ export function SharedView(props: { sid: string }) {
       <div className="review-grid">
         <div className="review-canvas">
           <CompareCanvas before={design.manifest.before_url} after={design.manifest.image.url}
-            width={design.manifest.image.width} height={design.manifest.image.height} layers={layers}
+            width={design.manifest.image.width} height={design.manifest.image.height} layers={layers} pins={pins}
             selected={selected} onSelect={setSelected} alt={t.resultTitle(design.finishes.countertop.name)} compare={compare} startAt={50} />
           <div className="canvas-toolbar">
             <button className={`btn btn-glass btn-sm${compare ? " on" : ""}`} onClick={() => setCompare(!compare)} aria-pressed={compare}>
@@ -180,23 +181,7 @@ export function SharedView(props: { sid: string }) {
           <div className="card quote-card">
             <div className="badges"><span className="badge">{t.estimate}</span></div>
             <div className="numeral">{rangeMain}{rangeCur && <span className="numeral-cur">{rangeCur}</span>}</div>
-            <ul className="design-rows">
-              {design.manifest.layers.map((l) => {
-                const f = l.surface_class === "backsplash" ? design.finishes.backsplash : design.finishes.countertop;
-                return (
-                  <li key={l.surface_id}>
-                    <button className={selected === l.surface_id ? "on" : ""} onClick={() => { setCompare(false); setSelected(l.surface_id); }}>
-                      {f && <img className="swatch" src={f.swatch_url} alt="" width={44} height={44} />}
-                      <span className="grow">
-                        <span className="tiny muted">{l.surface_class === "countertop" ? t.countertop : t.backsplash}</span>
-                        <strong>{f?.name}</strong>
-                        {f && <span className="tiny muted">Kober {t.lines[f.line]}{f.code ? ` · ${f.code}` : ""}</span>}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <ItemRows design={design} pins={pins} selected={selected} onSelect={(id) => { setCompare(false); setSelected(id); }} />
             <button className="btn btn-accent btn-lg btn-block" onClick={() => go("#/")}><Icon.sparkle size={18} />{t.designYours}</button>
             <div className="quote-actions">
               <button className="btn btn-glass" onClick={() => setShowQuote(!showQuote)} aria-expanded={showQuote}><Icon.receipt size={16} />{t.pieces}</button>

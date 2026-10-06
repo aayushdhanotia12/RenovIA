@@ -173,6 +173,33 @@ def quote_request(meas: dict, choice: dict, cat: Catalogue) -> QuoteRequest:
     )
 
 
+def pointers_for(layers: list[dict], objects: list[dict], quote: dict) -> list[dict]:
+    """The labelled pointers on the render, one per thing with a price: each countertop run, its
+    edge (the profile), each backsplash run, and the sink when the quote includes its fitting.
+    Prices are not copied here; the web app reads them from the quote's items by `item`. The first
+    pointer of each item carries its price (`primary`); a second run of the same item does not."""
+    items = {it["item"] for it in quote.get("items", [])}
+    out: list[dict] = []
+    seen: set[str] = set()
+
+    def add(pid: str, item: str, at, surface_id: str | None) -> None:
+        out.append({"id": pid, "item": item, "surface_id": surface_id, "at": [int(at[0]), int(at[1])],
+                    "primary": item not in seen})
+        seen.add(item)
+
+    for layer in sorted(layers, key=lambda la: -la["area_mm2"]):
+        if layer["surface_class"] == "countertop":
+            add(layer["surface_id"], "countertop", layer["centroid"], layer["surface_id"])
+            if layer.get("edge_point"):
+                add(f"{layer['surface_id']}_edge", "profile", layer["edge_point"], layer["surface_id"])
+        else:
+            add(layer["surface_id"], "backsplash", layer["centroid"], layer["surface_id"])
+    sinks = [o for o in objects if o.get("label") == "sink" and o.get("centroid")]
+    if sinks and "sink" in items:
+        add("sink", "sink", max(sinks, key=lambda o: o.get("area_px", 0))["centroid"], None)
+    return out
+
+
 def design(ctx: Ctx, owner: str, pid: str, photo_id: str, choice: dict, progress) -> dict:
     cat = ctx.cat
     top = cat.finish(choice["countertop_finish_id"])
@@ -237,6 +264,7 @@ def design(ctx: Ctx, owner: str, pid: str, photo_id: str, choice: dict, progress
         "image": {"url": f"/media/{pid}/renders/{design_id}.jpg", "width": w, "height": h},
         "before_url": f"/media/{pid}/{photo['path']}",
         "layers": layers,
+        "pointers": pointers_for(layers, surf.get("objects") or [], quote),
         "camera": {"focal_px": camera.get("focal_px"), "source": camera.get("source", "default")},
     }
     versions = {**ctx.models.versions(), "lighting": lighting_id, "renderer": RENDERER_VERSION,

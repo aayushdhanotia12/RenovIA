@@ -29,7 +29,7 @@ With `RENOVAI_AI_MODE=mock` (the default), upload `samples/kober_photos/p7_0_192
 
 ### The price & rules sheet
 
-Every business number lives in one workbook the team fills in: Kober's cost for each countertop piece (price category x width x length, in Original Q), each profile's price against Original Q, Spläsh panel costs, the margin per category, labour, booking fees, IVA, the cutting allowance, and each finish's price category and availability.
+Every business number lives in one workbook the team fills in: Kober's cost for each countertop piece (price category x width x length, in Original Q), each profile's price against Original Q, Spläsh panel costs, the margin per category, labour, the measuring-visit fee (free when the customer hires the installation), IVA, the cutting allowance, and each finish's price category and availability.
 
 1. The template is `catalog/kober/precios_renovai_plantilla.xlsx` (regenerate it with `python catalog/kober/price_sheet.py template out.xlsx`). Yellow cells are example values; the `Leeme` tab explains every tab.
 2. Upload it to Google Drive and open it as a Google Sheet. Fill it in, leaving `estado` as `BORRADOR` while you check it.
@@ -89,7 +89,7 @@ Spanish first, with an English toggle. Design tokens (warm neutrals, one clay ac
 
 ## Placeholders and assumptions to confirm
 
-- **Prices, installation rates and booking fees:** placeholder MXN numbers until the sheet is imported.
+- **Prices, installation rates and the visit fee:** placeholder MXN numbers until the sheet is imported.
 - **IVA 16%**, and whether prices are shown with IVA included (the sheet's `iva_confirmado`).
 - **10% allowance on every run.** For countertops this matters: a 3.60 m run becomes 3.96 m and needs a 3.00 m + 1.20 m piece and a joint.
 - **Finish images:** stand-ins until the Kober PDF is re-extracted. Finish scale assumes a PDF swatch pixel is 1.5 mm.

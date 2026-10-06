@@ -87,8 +87,14 @@ class ApiFlowTests(unittest.TestCase):
         # The sample photo has a stored lighting-model result, so the render used it and says so.
         self.assertEqual(dsg["model_versions"]["lighting"], "mock:stored-marigold-iid-lighting")
         self.assertEqual(c.get(dsg["manifest"]["image"]["url"]).status_code, 200)
+        # One labelled pointer per priced thing, each pointing at an item the quote prices.
+        pointers = dsg["manifest"]["pointers"]
+        self.assertEqual(sorted(p["item"] for p in pointers), ["backsplash", "countertop", "profile", "sink"])
+        self.assertTrue({p["item"] for p in pointers} - {"profile"} <= {it["item"] for it in quote["items"]})
+        self.assertEqual(sum(it["total"]["minor"] for it in quote["items"]), quote["total"]["minor"])
+        self.assertTrue(all("price" not in p and "total" not in p for p in pointers))  # prices live in the quote only
 
-        events = c.get(f"/api/jobs/{job['id']}/events").text
+        events =c.get(f"/api/jobs/{job['id']}/events").text
         seqs = [json.loads(line[6:])["seq"] for line in events.splitlines() if line.startswith("data: ")]
         self.assertEqual(seqs, sorted(seqs))
         self.assertIn('"stage": "JOB", "status": "done"', events)
@@ -133,8 +139,11 @@ class ApiFlowTests(unittest.TestCase):
             self.assertLess(b["estimate"]["low"]["minor"], b["estimate"]["high"]["minor"])
             self.assertNotIn("price", b)
         self.assertEqual(c.get(f"/api/projects/{pid}").json()["style_board"]["items"], board)
-        self.assertEqual([s["id"] for s in c.get("/api/catalogue").json()["styles"]],
-                         ["minimalista", "calido", "contraste", "creativo"])
+        catalogue = c.get("/api/catalogue").json()
+        self.assertEqual([s["id"] for s in catalogue["styles"]], ["minimalista", "calido", "contraste", "creativo"])
+        # The landing page states the visit rule with the sheet's fee, IVA included.
+        self.assertEqual((catalogue["visit_fee"]["minor"], catalogue["visit_fee_rule"]), (58000, "free_if_hired"))
+        self.assertEqual({p["id"]: p["edge_shape"] for p in catalogue["profiles"]}["original"], "rounded")
 
     def test_float_length_is_refused(self):
         pid = self.client.post("/api/projects").json()["id"]

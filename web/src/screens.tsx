@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { api, type BoardItem, type Catalogue, type Design, type Finish, type Photo, type Point, type Project,
-  type Question, type StyleId, type Suggestion, type SurfaceItem } from "./api";
-import { CompareCanvas, QuadEditor, QuoteLines, QuoteTotals, WorkingView, designLayers, type CanvasLayer } from "./components";
-import { cmToMm, mmToCm, moneyRange, splitCurrency } from "./format";
+import { api, followJob, type BoardItem, type Catalogue, type Design, type Finish, type MoneyJ, type Photo, type Point,
+  type Project, type Question, type StyleId, type Suggestion, type SurfaceItem } from "./api";
+import { CompareCanvas, EdgeDrawing, ItemRows, QuadEditor, QuoteLines, QuoteTotals, SinkGlyph, WorkingView, designLayers,
+  designPins, itemPrice, type CanvasLayer } from "./components";
+import { cmToMm, mmToCm, money, moneyRange, signedMoney, splitCurrency } from "./format";
 import { useLang } from "./lang";
 import { ShareDialog } from "./share";
 import { ErrorLine, Icon, Modal, Sheet, Skeleton, StepHeader, Stepper, go } from "./ui";
@@ -211,7 +212,7 @@ export function Home() {
             <div key={p.t} className={`price-card${i === 0 ? " price-card-hi" : ""}`}>
               <div className="caption">{p.t}</div>
               <div className="price-v">{p.v}</div>
-              <p className="small muted">{p.d}</p>
+              <p className="small muted">{p.d}{i === 1 && cat?.visit_fee ? ` ${t.visitFeeOther(money(cat.visit_fee, lang))}` : ""}</p>
             </div>
           ))}
         </div>
@@ -745,27 +746,46 @@ export function Result(props: { did: string }) {
   const [showQuote, setShowQuote] = useState(false);
   const [booking, setBooking] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [edge, setEdge] = useState<string | null>(null);        // the edge picked in the edge sheet
+  const [edgeJob, setEdgeJob] = useState<string | null>(null);  // re-rendering with that edge
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    setDesign(null); setSelected(null); setCompare(false);
+    setDesign(null); setSelected(null); setCompare(false); setEdge(null); setEdgeJob(null);
     api.getDesign(props.did).then((d) => { setDesign(d); return api.project(d.project_id); }).then(setProject)
       .catch((e) => setError(e.message));
   }, [props.did]);
   useEffect(() => {
     document.querySelector(".review-head .pill-tabs .on")?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [design?.id, project?.id]);
-  if (error) return <div className="flow"><ErrorLine error={error} /></div>;
+  useEffect(() => {
+    if (!edgeJob) return;
+    return followJob(edgeJob, (e) => {
+      if (e.stage !== "JOB") return;
+      if (e.status === "done") go(`#/d/${e.result.design_id}`);
+      else { setError(e.detail || "failed"); setEdgeJob(null); }
+    });
+  }, [edgeJob]);
+  if (error && !design) return <div className="flow"><ErrorLine error={error} /></div>;
   if (!design) return <div className="review"><Skeleton height={520} radius={24} /></div>;
 
   const q = design.quote;
   const layers = designLayers(design, t);
-  const layer = design.manifest.layers.find((l) => l.surface_id === selected);
-  const finish = layer?.surface_class === "backsplash" ? design.finishes.backsplash : design.finishes.countertop;
+  const pins = designPins(design, t, lang);
+  const pin = pins.find((p) => p.id === selected);
   const board = project?.style_board?.items.filter((b) => b.design_id) || [];
   const onBoard = board.some((b) => b.design_id === design.id);
   const back = () => go(onBoard ? `#/p/${design.project_id}/styles/${design.photo_id}` : `#/p/${design.project_id}/finishes/${design.photo_id}`);
   const range = moneyRange(q.estimate.low, q.estimate.high, lang, t.approx);
   const [rangeMain, rangeCur] = splitCurrency(range);
+  const select = (id: string | null) => { setSelected(id); setEdge(null); };
+  const changeEdge = async (profileId: string) => {
+    setError(null);
+    try {
+      const { job_id } = await api.design(design.project_id, { photo_id: design.photo_id, countertop_finish_id: design.choice.countertop_finish_id,
+        profile_id: profileId, splash_finish_id: design.choice.splash_finish_id, fulfilment_type: design.choice.fulfilment_type, language: lang });
+      setEdgeJob(job_id);
+    } catch (e: any) { setError(e.message); }
+  };
 
   return (
     <section className="review" data-route="design-review">
@@ -788,9 +808,9 @@ export function Result(props: { did: string }) {
       <div className="review-grid">
         <div className="review-canvas">
           <CompareCanvas before={design.manifest.before_url} after={design.manifest.image.url}
-            width={design.manifest.image.width} height={design.manifest.image.height} layers={layers}
-            selected={selected} onSelect={(id) => setSelected(id)} alt={t.resultTitle(design.finishes.countertop.name)}
-            compare={compare} startAt={50} />
+            width={design.manifest.image.width} height={design.manifest.image.height} layers={layers} pins={pins}
+            selected={selected} onSelect={select} alt={t.resultTitle(design.finishes.countertop.name)}
+            compare={compare} startAt={50} busy={edgeJob ? t.changingEdge : null} />
           <div className="canvas-toolbar">
             <button className={`btn btn-glass btn-sm${compare ? " on" : ""}`} onClick={() => setCompare(!compare)} aria-pressed={compare}>
               <Icon.compare size={16} />{t.compare}
@@ -810,24 +830,8 @@ export function Result(props: { did: string }) {
             {q.estimate_only && <p className="small muted">{t.rangeWhy}</p>}
 
             <h3 className="caption list-title">{t.inYourDesign}</h3>
-            <ul className="design-rows">
-              {design.manifest.layers.map((l) => {
-                const f = l.surface_class === "backsplash" ? design.finishes.backsplash : design.finishes.countertop;
-                return (
-                  <li key={l.surface_id}>
-                    <button className={selected === l.surface_id ? "on" : ""} onClick={() => setSelected(l.surface_id)}>
-                      {f && <img className="swatch" src={f.swatch_url} alt="" width={44} height={44} />}
-                      <span className="grow">
-                        <span className="tiny muted">{l.surface_class === "countertop" ? t.countertop : t.backsplash} {l.run_id}</span>
-                        <strong>{f?.name}</strong>
-                        {l.surface_class === "countertop" && <span className="tiny muted">{t.profile}: {design.profile.name} ({design.profile.display})</span>}
-                      </span>
-                      <Icon.arrowRight size={16} />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <ItemRows design={design} pins={pins} selected={selected} onSelect={(id) => { setCompare(false); select(id); }} />
+            <ErrorLine error={error} />
 
             <button className="btn btn-accent btn-lg btn-block" onClick={() => setBooking(true)}><Icon.calendar size={18} />{t.book}</button>
             <div className="quote-actions">
@@ -860,26 +864,106 @@ export function Result(props: { did: string }) {
         </div>
       </div>
 
-      {layer && finish && (
-        <Sheet label={finish.name} onClose={() => setSelected(null)}>
-          <img className="sheet-hero" src={finish.swatch_url} alt="" />
-          <div className="caption">{layer.surface_class === "countertop" ? t.countertop : t.backsplash} {layer.run_id} · Kober {t.lines[finish.line]}</div>
-          <h2 className="h2">{finish.name}</h2>
-          {finish.code && <div className="small muted">{t.code} <span className="mono">{finish.code}</span></div>}
-          {layer.surface_class === "countertop" && <div className="small">{t.profile}: {design.profile.name} ({design.profile.display})</div>}
-          <h3 className="caption list-title">{t.pieces}</h3>
-          <QuoteLines quote={q} surface={layer.surface_class} />
-          <button className="btn btn-glass btn-block" onClick={() => go(`#/p/${design.project_id}/finishes/${design.photo_id}`)}>{t.changeFinish}</button>
-        </Sheet>
+      {pin && (
+        <ItemSheet design={design} item={pin.item} surfaceId={pin.target} cat={cat} edge={edge} onEdge={setEdge}
+          busy={!!edgeJob} onClose={() => select(null)} onChangeEdge={changeEdge}
+          onShowEdge={() => { const e = pins.find((p) => p.item === "profile"); if (e) setSelected(e.id); }} />
       )}
-      {booking && <BookingForm pid={design.project_id} did={design.id} range={range} onClose={() => setBooking(false)} />}
+      {booking && <BookingForm pid={design.project_id} did={design.id} range={range} visitFee={q.visit_fee} onClose={() => setBooking(false)} />}
       {sharing && <ShareDialog design={design} range={range} onClose={() => setSharing(false)} />}
     </section>
   );
 }
 
-function BookingForm(props: { pid: string; did: string; range: string; onClose: () => void }) {
-  const { t } = useLang();
+// What a pointer opens: the product, its price with IVA and the pieces behind it; for the edge,
+// the other edges this finish is made in, what each changes, and a button to see it rendered.
+function ItemSheet(props: { design: Design; item: string; surfaceId: string | null; cat: Catalogue | null;
+  edge: string | null; onEdge: (id: string) => void; busy: boolean; onClose: () => void;
+  onChangeEdge: (profileId: string) => void; onShowEdge: () => void }) {
+  const { t, lang } = useLang();
+  const d = props.design, q = d.quote;
+  const price = itemPrice(q, props.item, lang);
+  const priceBlock = price && (
+    <div className="item-price">
+      <strong>{price}</strong>
+      <span className="tiny muted">{t.ivaIncluded} · {t.itemNote[props.item]}</span>
+    </div>
+  );
+  if (props.item === "profile") {
+    const full = (id: string) => props.cat?.profiles.find((p) => p.id === id);
+    const now = { ...d.profile, ...full(d.profile.id) };
+    const options = q.profile_options || [];
+    const picked = options.find((o) => o.profile_id === props.edge);
+    return (
+      <Sheet label={t.edgeTitle} onClose={props.onClose}>
+        <div className="sheet-art"><EdgeDrawing profile={now} label={`${now.name} ${now.display}`} /></div>
+        <div className="caption">{t.edgeTitle} · {d.finishes.countertop.name}</div>
+        <h2 className="h2">{now.name}</h2>
+        <div className="small muted">{t.thickness} {now.display}{now.edge_shape ? ` · ${now.edge_shape === "rounded" ? t.rounded : t.square}` : ""}</div>
+        <h3 className="caption list-title">{options.length ? t.edgeOthers : ""}</h3>
+        {options.length === 0 ? <p className="small muted">{t.edgeOnly}</p> : (
+          <ul className="edge-options" role="radiogroup" aria-label={t.edgeOthers}>
+            {options.map((o) => {
+              const p = { ...o, ...full(o.profile_id) };
+              return (
+                <li key={o.profile_id}>
+                  <button role="radio" aria-checked={props.edge === o.profile_id} className={props.edge === o.profile_id ? "on" : ""}
+                    onClick={() => props.onEdge(o.profile_id)} disabled={props.busy}>
+                    <EdgeDrawing profile={p} />
+                    <span className="grow"><strong>{o.name}</strong><span className="tiny muted">{o.display}</span></span>
+                    <span className={`diff${o.difference.minor < 0 ? " diff-down" : ""}`}>
+                      {o.difference.minor === 0 ? t.edgeSame : signedMoney(o.difference, lang)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {options.length > 0 && (
+          <button className="btn btn-accent btn-block" disabled={!picked || props.busy} onClick={() => picked && props.onChangeEdge(picked.profile_id)}>
+            {props.busy ? t.changingEdge : picked ? t.seeWithEdge(picked.name) : t.changeEdge}
+          </button>
+        )}
+      </Sheet>
+    );
+  }
+  if (props.item === "sink") {
+    return (
+      <Sheet label={t.sinkTitle} onClose={props.onClose}>
+        <div className="sheet-art sheet-art-icon"><SinkGlyph /></div>
+        <div className="caption">{t.items.sink}</div>
+        <h2 className="h2">{t.sinkTitle}</h2>
+        {priceBlock}
+        <h3 className="caption list-title">{t.pieces}</h3>
+        <QuoteLines quote={q} item="sink" />
+      </Sheet>
+    );
+  }
+  const layer = d.manifest.layers.find((l) => l.surface_id === props.surfaceId);
+  const finish = props.item === "backsplash" ? d.finishes.backsplash : d.finishes.countertop;
+  if (!finish) return null;
+  return (
+    <Sheet label={finish.name} onClose={props.onClose}>
+      <img className="sheet-hero" src={finish.swatch_url} alt="" />
+      <div className="caption">{t.items[props.item]}{layer ? ` ${layer.run_id}` : ""} · Kober {t.lines[finish.line]}</div>
+      <h2 className="h2">{finish.name}</h2>
+      {finish.code && <div className="small muted">{t.code} <span className="mono">{finish.code}</span></div>}
+      {priceBlock}
+      {props.item === "countertop" && (
+        <button className="edge-link" onClick={props.onShowEdge}>
+          <span><span className="tiny muted">{t.profile}</span><strong>{d.profile.name} ({d.profile.display})</strong></span>
+          {(q.profile_options?.length || 0) > 0 && <span className="small">{t.changeEdge}<Icon.arrowRight size={14} /></span>}
+        </button>
+      )}
+      <h3 className="caption list-title">{t.pieces}</h3>
+      <QuoteLines quote={q} item={props.item} />
+      <button className="btn btn-glass btn-block" onClick={() => go(`#/p/${d.project_id}/finishes/${d.photo_id}`)}>{t.changeFinish}</button>
+    </Sheet>
+  );
+}
+
+function BookingForm(props: { pid: string; did: string; range: string; visitFee?: MoneyJ; onClose: () => void }) {
+  const { t, lang } = useLang();
   const [form, setForm] = useState({ name: "", phone: "", address: "", preferred_window: "", fulfilment_type: "MANAGED", notes: "" });
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
@@ -919,6 +1003,9 @@ function BookingForm(props: { pid: string; did: string; range: string; onClose: 
             <label className="field field-full"><span>{t.notes}</span><textarea value={form.notes} onChange={set("notes")} rows={2} /></label>
           </div>
           <div className="booking-sum"><span className="small muted">{t.estimate}</span><strong>{props.range}</strong></div>
+          <p className="small visit-note" data-service={form.fulfilment_type}>
+            {form.fulfilment_type === "MANAGED" || !props.visitFee ? t.visitWithJob : t.visitMaterialsOnly(money(props.visitFee, lang))}
+          </p>
           <p className="tiny muted">{t.noPayment}</p>
           <ErrorLine error={error} />
           <div className="row end">

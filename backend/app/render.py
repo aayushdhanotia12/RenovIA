@@ -78,6 +78,16 @@ def texture_for(finish: Finish, width_mm: int, height_mm: int, cache_dir: Path) 
     return finish_texture(finish.swatch_path, finish.id, width_mm, height_mm, MM_PER_SWATCH_PX, PX_PER_MM, cache_dir)
 
 
+def edge_point(face_mask: np.ndarray) -> list[int]:
+    """Where the edge pointer sits: on the countertop's front edge, a little right of its middle."""
+    ys, xs = np.nonzero(face_mask)
+    x0 = float(np.percentile(xs, 60))
+    near = np.abs(xs - x0) < 4
+    if not near.any():
+        return centroid(face_mask)
+    return [int(round(x0)), int(np.median(ys[near]))]
+
+
 def edge_shape(profile: dict) -> str:
     return profile.get("edge_shape") or EDGE_SHAPE.get(profile.get("id", ""), "square")
 
@@ -133,7 +143,8 @@ def render_design(photo_bgr: np.ndarray, plans: list[SurfacePlan], countertop: F
         claimed |= mask > 0
         layer_faces = {}
         if faces is not None and faces.count():
-            layer_faces = {"edge_polygon": mask_polygon(faces.mask), "edge_kind": faces.kind}
+            layer_faces = {"edge_polygon": mask_polygon(faces.mask), "edge_kind": faces.kind,
+                           "edge_point": edge_point(faces.mask)}
         layers.append({
             "surface_id": plan.surface_id, "surface_class": plan.surface_class, "run_id": plan.run_id,
             "finish_id": finish.id, "finish_name": finish.name,

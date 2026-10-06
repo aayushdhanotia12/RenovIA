@@ -25,5 +25,6 @@
     "sink_undermount_each": 150000,
     "join_each": 60000
   },
-  "booking_fee_minor": {"SELF": 30000, "MANAGED": 50000}
+  "visit_fee_minor": 50000,
+  "visit_fee_note": "Measuring visit before IVA: free if the customer hires the job, otherwise this flat fee (placeholder until the team sets it)."
 }

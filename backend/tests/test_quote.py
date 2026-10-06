@@ -113,6 +113,48 @@ class CountertopTests(unittest.TestCase):
         self.assertEqual((sink.qty, sink.total.minor), (2, 300000))
 
 
+class ItemTests(unittest.TestCase):
+    """What each pointer on the render shows: an item's share of the quote, IVA included."""
+
+    def test_run_2300mm_with_one_sink_shows_countertop_7777_80_and_sink_1740_with_iva(self):
+        q = price_quote(carrara([CountertopRun("A", 2300)], sinks=1), CAT)
+        items = {it.item: it for it in q.items}
+        self.assertEqual([it.item for it in q.items], ["countertop", "sink"])
+        self.assertEqual((items["countertop"].subtotal.minor, items["countertop"].tax.minor,
+                          items["countertop"].total.minor), (670500, 107280, 777780))
+        self.assertEqual((items["sink"].subtotal.minor, items["sink"].total.minor), (150000, 174000))
+        self.assertEqual(sum(it.total.minor for it in q.items), q.total.minor)
+
+    def test_each_quote_line_names_the_item_it_belongs_to(self):
+        lines = price_quote(carrara([CountertopRun("A", 2300)], sinks=1), CAT).to_json()["lines"]
+        self.assertEqual({ln["kind"]: ln["item"] for ln in lines}["sink_undermount"], "sink")
+        self.assertTrue(all(ln["item"] == "countertop" for ln in lines if ln["kind"] != "sink_undermount"))
+
+    def test_items_always_add_up_to_the_total_even_when_iva_rounds(self):
+        req = carrara([CountertopRun("A", 2333)], sinks=1, splash_finish_id="estilo-caracatta",
+                      splash_runs=(SplashRun("S1", 2333, 537),))
+        q = price_quote(req, CAT)
+        self.assertEqual(sum(it.tax.minor for it in q.items), q.tax.minor)
+        self.assertEqual(sum(it.total.minor for it in q.items), q.total.minor)
+
+    def test_typed_measurements_give_each_item_a_range_around_its_total(self):
+        q = price_quote(carrara([CountertopRun("A", 2300)], scale_confidence="low"), CAT)
+        top = q.items[0]
+        self.assertLessEqual(top.low.minor, top.total.minor)
+        self.assertGreaterEqual(top.high.minor, top.total.minor)
+        self.assertLess(top.low.minor, top.high.minor)
+
+    def test_carrara_2300mm_original_q_to_original_saves_313_20_and_essence_adds_939_60(self):
+        q = price_quote(carrara([CountertopRun("A", 2300)]), CAT)
+        diff = {o.profile_id: o.difference.minor for o in q.profile_options}
+        self.assertEqual(diff, {"original": -31320, "slim": -31320, "essence": 93960})
+        self.assertEqual(q.profile_options[-1].profile_id, "essence")  # cheapest change first
+
+    def test_a_basik_finish_offers_no_other_profile(self):
+        q = price_quote(QuoteRequest("basik-almond-leather", "basik", (CountertopRun("A", 2300),)), CAT)
+        self.assertEqual(q.profile_options, [])
+
+
 class SplashTests(unittest.TestCase):
     def test_splash_3100_by_600mm_caracatta_is_one_600x3600_panel_at_3024_mxn(self):
         req = carrara([CountertopRun("A", 2300)], splash_finish_id="estilo-caracatta",
@@ -164,10 +206,10 @@ class FinalQuoteTests(unittest.TestCase):
         self.assertEqual(q.estimate_low, q.total)
         self.assertEqual(q.estimate_high, q.total)
 
-    def test_balance_range_subtracts_the_500_mxn_managed_booking_fee(self):
+    def test_visit_fee_500_mxn_shows_as_580_with_iva_and_is_free_if_the_customer_hires_the_job(self):
         j = price_quote(carrara([CountertopRun("A", 2300)]), CAT).to_json()
-        self.assertEqual(j["booking_fee"]["minor"], 50000)
-        self.assertEqual(j["balance"]["low"]["minor"], 630000 - 50000)
+        self.assertEqual((j["visit_fee"]["minor"], j["visit_fee_rule"]), (58000, "free_if_hired"))
+        self.assertNotIn("balance", j)  # nothing is paid up front, so there is no balance to show
 
     def test_placeholder_price_list_is_declared_on_every_quote(self):
         q = price_quote(carrara([CountertopRun("A", 2300)]), CAT)

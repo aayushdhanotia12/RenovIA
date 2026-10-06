@@ -8,7 +8,8 @@ Then:
 
 The flow: landing (demo hotspots, style chip, photo drop) -> measurements -> surfaces ->
 style step (suggestions, catalogue) -> one design -> the 4-style board -> design review
-(hotspot sheet, before/after, share on WhatsApp, printable quote, booking) -> the shared
+(price tags, item sheets, changing the edge, before/after, share on WhatsApp, printable quote,
+booking with the visit-fee rule) -> the shared
 link opened by someone else -> phone layouts -> staff (schedule, record the visit, final
 quote, print) -> English.
 """
@@ -52,6 +53,7 @@ def run(base: str, out: Path) -> None:
         settle(page, 1200)
         shot("01_home.png")
         shot("01b_home_full.png", full_page=True)
+        expect(page.locator("#pricing")).to_contain_text("$580")  # the visit fee, from the price sheet
         page.locator(".demo-rows button").first.click()
         expect(page.locator(".hot-chip")).to_be_visible()
         page.locator("#demo").scroll_into_view_if_needed()
@@ -68,6 +70,7 @@ def run(base: str, out: Path) -> None:
         runs = page.locator(".run-row input")
         runs.nth(0).fill("360")   # countertop A length, cm
         runs.nth(2).fill("300")   # backsplash S1 length, cm
+        page.locator(".sinks-row button[aria-label='+']").click()  # one undermount sink
         settle(page)
         shot("03_measure.png", full_page=True)
         page.get_by_role("button", name="Buscar la cubierta en la foto").click()
@@ -127,13 +130,36 @@ def run(base: str, out: Path) -> None:
         expect(page.locator(".review-head .pill-tabs button.on")).to_have_text("Contraste")
         settle(page, 1200)
         shot("11_result.png")
-        design_url = page.url
-        page.locator("polygon.hotspot").last.click()
-        expect(page.locator("aside.sheet")).to_be_visible()
+        # every priced item has a tag with its price; the edge tag names the profile
+        tags = page.locator(".review .ptag")
+        for item in ("countertop", "backsplash", "sink"):
+            expect(tags.and_(page.locator(f"[data-item={item}]"))).to_contain_text("$")
+        expect(tags.and_(page.locator("[data-item=profile]"))).to_contain_text("Canto")
+        tags.and_(page.locator("[data-item=countertop]")).click()
+        sheet = page.locator("aside.sheet")
+        expect(sheet).to_contain_text("IVA incluido")
         settle(page, 400)
-        shot("12_hotspot_sheet.png")
+        shot("12_countertop_sheet.png")
+        sheet.locator(".edge-link").click()
+        expect(sheet).to_contain_text("Otros cantos de este acabado")
+        expect(page.locator(".review .ptag-on")).to_have_attribute("data-item", "profile")
+        sheet.locator(".edge-options button").first.click()
+        settle(page, 300)
+        shot("12b_edge_sheet.png")
+        old_url = page.url
+        sheet.get_by_role("button", name=re.compile("^Ver con canto")).click()
+        page.wait_for_url(lambda u: u != old_url and "/#/d/" in u, timeout=60000)
+        expect(page.locator(".review .ptag").first).to_be_visible(timeout=20000)
+        settle(page, 1000)
+        shot("12c_after_edge_change.png")
+        design_url = page.url
+        page.locator(".review .ptag[data-item=sink]").click()
+        expect(page.locator("aside.sheet")).to_contain_text("Corte y submontado")
         page.keyboard.press("Escape")
         expect(page.locator("aside.sheet")).to_have_count(0)
+        page.locator("polygon.hotspot").last.click()  # the edge strip itself opens the edge options
+        expect(page.locator("aside.sheet")).to_contain_text("Canto de la cubierta")
+        page.keyboard.press("Escape")
 
         page.get_by_role("button", name="Comparar").click()
         page.locator(".review .canvas input[type=range]").fill("50")
@@ -143,6 +169,7 @@ def run(base: str, out: Path) -> None:
 
         page.get_by_role("button", name="Ver cotización completa").click()
         expect(page.locator(".quote-full")).to_be_visible()
+        expect(page.locator(".quote-full tr.visit-row")).to_contain_text("Sin costo")
         settle(page, 300)
         shot("14_full_quote.png", full_page=True)
 
@@ -174,6 +201,10 @@ def run(base: str, out: Path) -> None:
         page.get_by_label("Nombre").fill("Ana López")
         page.get_by_label("Teléfono").fill("33 1234 5678")
         page.get_by_label("Dirección").fill("Av. Patria 123, Zapopan, Jal.")
+        expect(page.locator(".visit-note")).to_contain_text("sin costo")
+        page.get_by_label("Servicio").select_option("SELF")
+        expect(page.locator(".visit-note")).to_contain_text("$580")
+        page.get_by_label("Servicio").select_option("MANAGED")
         settle(page, 300)
         shot("17_booking.png")
         page.get_by_role("button", name="Reservar visita", exact=True).click()
@@ -190,6 +221,8 @@ def run(base: str, out: Path) -> None:
         expect(op.get_by_text("Un diseño de cocina compartido contigo")).to_be_visible(timeout=20000)
         expect(op.locator(".review .canvas-img").nth(1)).to_be_visible()
         op.wait_for_load_state("networkidle")
+        op.get_by_role("button", name="Comparar").click()
+        expect(op.locator(".review .ptag[data-item=countertop]")).to_contain_text("$")
         op.wait_for_timeout(900)
         op.screenshot(path=str(out / "19_shared_view.png"))
         other.close()
@@ -200,6 +233,11 @@ def run(base: str, out: Path) -> None:
         expect(page.locator(".review .canvas-img").nth(1)).to_be_visible(timeout=20000)
         settle(page, 1200)
         shot("20_result_phone.png", full_page=True)
+        page.locator(".review .ptag[data-item=countertop]").click()
+        expect(page.locator("aside.sheet")).to_contain_text("IVA incluido")
+        settle(page, 400)
+        shot("20b_result_phone_sheet.png")
+        page.keyboard.press("Escape")
         page.goto(base + "/#/")
         expect(page.get_by_role("heading", level=1)).to_contain_text("Tu cocina")
         settle(page, 1000)

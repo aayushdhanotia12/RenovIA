@@ -8,11 +8,12 @@ export type Finish = {
   id: string; line: "estilo" | "diseno" | "basik"; name: string; code: string | null;
   category: string; category_inferred: boolean; swatch_url: string; tags: string[]; available?: boolean;
 };
-export type Profile = { id: string; name: string; display: string; finish_lines: string[] };
+export type Profile = { id: string; name: string; display: string; finish_lines: string[]; thickness_mm?: number;
+  edge_shape?: "rounded" | "square" };
 export type StyleId = "minimalista" | "calido" | "contraste" | "creativo";
 export type Style = { id: StyleId; name: { es: string; en: string }; blurb: { es: string; en: string } };
 export type Catalogue = { finishes: Finish[]; profiles: Profile[]; currency: string; price_list_status: string;
-  styles: Style[]; placeholder_swatches?: boolean };
+  styles: Style[]; placeholder_swatches?: boolean; visit_fee?: MoneyJ };
 
 export type CountertopRun = { run_id: string; length_mm: number; depth_mm: number };
 export type SplashRun = { run_id: string; length_mm: number; height_mm: number };
@@ -36,16 +37,26 @@ export type Project = { id: string; measurements: (Measurements & { scale_confid
   designs: { id: string; photo_id: string }[] };
 
 export type QuoteLine = { group: "materials" | "labour"; kind: string; surface: string | null; description: string;
-  qty: number; unit: string; unit_price: MoneyJ; total: MoneyJ; detail: string; finish_id: string | null };
+  qty: number; unit: string; unit_price: MoneyJ; total: MoneyJ; detail: string; finish_id: string | null;
+  item?: "countertop" | "sink" | "backsplash" };
+// What the customer points at on the render, with its share of the quote (IVA included).
+export type ItemKind = "countertop" | "sink" | "backsplash";
+export type QuoteItem = { item: ItemKind; subtotal: MoneyJ; tax: MoneyJ; total: MoneyJ; low: MoneyJ; high: MoneyJ };
+export type ProfileOption = { profile_id: string; name: string; display: string; total: MoneyJ; difference: MoneyJ };
 export type Quote = { currency: string; lines: QuoteLine[]; materials: MoneyJ; labour: MoneyJ; subtotal: MoneyJ;
-  tax: MoneyJ; tax_rate_bp: number; total: MoneyJ; estimate: { low: MoneyJ; high: MoneyJ }; booking_fee: MoneyJ;
-  balance: { low: MoneyJ; high: MoneyJ }; scale_confidence: string; estimate_only: boolean;
-  price_list_status: string; assumptions: string[] };
+  tax: MoneyJ; tax_rate_bp: number; total: MoneyJ; estimate: { low: MoneyJ; high: MoneyJ };
+  visit_fee: MoneyJ; visit_fee_rule: "free_if_hired"; scale_confidence: string; estimate_only: boolean;
+  price_list_status: string; assumptions: string[]; items?: QuoteItem[]; profile_options?: ProfileOption[] };
 export type Layer = { surface_id: string; surface_class: string; run_id: string; finish_id: string; finish_name: string;
-  polygon: Point[]; centroid: Point; area_mm2: number; confidence: number; mask_url?: string };
+  polygon: Point[]; centroid: Point; area_mm2: number; confidence: number; mask_url?: string;
+  edge_polygon?: Point[]; edge_kind?: string; edge_point?: Point };
+// A labelled pointer on the render. Prices are not in it: they come from quote.items by `item`
+// (`profile` points at the countertop's edge and opens the profile options).
+export type Pointer = { id: string; item: ItemKind | "profile"; surface_id: string | null; at: Point; primary: boolean };
 export type Design = { id: string; project_id: string; photo_id: string; created_at?: number;
   choice: { countertop_finish_id: string; profile_id: string; splash_finish_id: string | null; fulfilment_type: string };
-  manifest: { render_id: string; image: { url: string; width: number; height: number }; before_url: string; layers: Layer[] };
+  manifest: { render_id: string; image: { url: string; width: number; height: number }; before_url: string; layers: Layer[];
+    pointers?: Pointer[] };
   quote: Quote; finishes: { countertop: Finish; backsplash: Finish | null }; profile: Profile; model_versions: Record<string, string> };
 // A design opened from a share link: no project, nothing personal.
 export type SharedDesign = Omit<Design, "project_id" | "photo_id" | "model_versions"> & { shared: true };
