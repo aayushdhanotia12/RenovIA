@@ -112,8 +112,17 @@ renderer/            compositor (homography, relighting, mask assertion) and tex
 catalog/kober/       PDF extractor, finishes.json (78 finishes), products.json, prices, price_sheet.py + template, placeholder swatches
 web/                 React app; styles.css holds the tokens; esbuild build; Playwright smoke and screens tests
 samples/             sample photo, offline fixtures, make_demo_assets.py (landing demo), compare_renders.py
-workers/gpu/         our own model worker (Marigold-IID-Lighting today); runs on a cloud GPU (modal_app.py) or a Mac
+workers/             our own model worker (Marigold-IID-Lighting today) and its image (Dockerfile); runs on Cloud Run with an L4, a Mac, or Modal
+deploy/gcp/          setup.sh: one-time Google Cloud setup (Cloud Shell) for the worker's keyless deploy from GitHub
 research/model_eval/ GitHub test run for candidate models (MoGe-2, GeoCalib, Marigold-IID) on free-licence kitchen photos
 ```
+
+### Deploying the model worker (Google Cloud Run, NVIDIA L4)
+
+1. Create a Google Cloud project with billing on.
+2. In Cloud Shell: `curl -fsSL https://raw.githubusercontent.com/aayushdhanotia12/RenovIA/main/deploy/gcp/setup.sh | bash -s -- PROJECT_ID`
+3. Set the four values it prints as repository variables (Settings > Secrets and variables > Actions > Variables).
+4. Run "Deploy model worker" in Actions (it also runs on every push to `main` that touches `workers/`). It builds the image with the weights inside, deploys one L4 that scales to zero (about US$1.05 an hour while running, nothing while idle), and checks the deployed worker on the sample photo.
+5. On the app server set `RENOVAI_WORKER_URL` to the service URL and `RENOVAI_WORKER_TOKEN` to `gcloud secrets versions access latest --secret renovai-worker-token`.
 
 `DECISIONS.md` lists where the prototype deliberately departs from the long-term spec. `PROTOTYPE-PLAN.md` has the plan to 28 Oct.

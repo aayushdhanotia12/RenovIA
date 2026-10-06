@@ -31,7 +31,8 @@ Target: demo-ready on **Fri 23 Oct**, with a buffer to **Wed 28 Oct**. "Demo-rea
 - Objects: Claude lists everything on the counter and backsplash, SAM 3 cuts each one out, so the finish is never painted over a tap, sink, hob or bottle.
 - Camera data kept from the photo (with checks), used for the render.
 - A GitHub test run for MoGe-2, GeoCalib and Marigold-IID on free-licence kitchen photos (`.github/workflows/model-eval.yml`). GeoCalib matched the photo's own camera data within 7%; Marigold's lighting is now used by the renderer.
-- Our own model worker (`workers/gpu`) serving Marigold-IID-Lighting, ready to deploy on Modal once the account exists; the offline mode uses Marigold's stored output for the sample photo.
+- Our own model worker (`workers/gpu`) serving Marigold-IID-Lighting; the offline mode uses Marigold's stored output for the sample photo. Deploys to Google Cloud Run on an L4 from GitHub (`deploy-worker.yml`, keyless) once `deploy/gcp/setup.sh` has run in the team's project. The worker passed its end-to-end check in the test run (CPU). MoGe-2 now runs too (13 s a photo on CPU); its normals separate the countertop top from its front edge cleanly, the next step for finding the edge face.
+- Price tags on the design: each item with its price (IVA included); the edge opens the other profiles with the difference and re-renders. The measuring visit is free when the customer hires the installation, else a flat fee from the sheet.
 - Research on competitors' tech and pricing, video capture and Mac mini hosting (project: `claude/research/Competitors video and local hosting.md`).
 
 ## Week 1 · 29 Sep – 4 Oct · go live with real models

@@ -1,4 +1,4 @@
-"""Deploy the model worker on Modal: an NVIDIA L4 billed per second that stops when idle.
+"""Alternative deploy of the model worker on Modal (the main one is Cloud Run: README, "Deploying the model worker").
 
     pip install modal && modal setup                     # once, with the team's Modal account
     modal secret create renovai-worker RENOVAI_WORKER_TOKEN=<a long random string>

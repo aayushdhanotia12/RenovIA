@@ -1,0 +1,4 @@
+**/__pycache__
+**/*.pyc
+gpu/modal_app.py
+Dockerfile
