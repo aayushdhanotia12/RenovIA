@@ -47,8 +47,8 @@ FINISH = ("This photo of a real kitchen has just had its countertop{splash} repl
           "pasted in. Make it look like an untouched photograph taken with the same camera. Give the {top} "
           "countertop the {shine} it would really have: reflections of the under-cabinet lights, the backsplash "
           "and the objects standing on it, soft contact shadows under every object, and a crisp {edge} front "
-          "edge catching the light. Keep the countertop's pattern, veining, colour and scale exactly as they are "
-          "(the second image is the real material). Change nothing else: same framing, cabinets, appliances, "
+          "edge catching the light. Keep the countertop's pattern, veining, colour and scale exactly as they are. "
+          "Change nothing else: same framing, cabinets, appliances, "
           "objects, walls and lights. Do not add or remove anything.")
 
 
@@ -171,8 +171,10 @@ def main() -> None:
                  label(ours, ["ours today (composite-v3)", f"pattern {pattern_match(ours, ours, mask)}"])]
         rows = []
         for m in models:
+            # `finish` gets our composite only: it already carries the exact pattern, and a material shown
+            # as a separate image makes editors worse, not better (MatReplace, arXiv 2608.24107).
             for arm, template, images in (("alone", ALONE, [jpeg(photo), swatch]),
-                                          ("finish", FINISH, [jpeg(ours), swatch])):
+                                          ("finish", FINISH, [jpeg(ours)])):
                 rec = {"model": m.label, "arm": arm}
                 t0 = time.time()
                 try:

@@ -24,7 +24,8 @@ env:
   # until the October 2026 model research is in; override them with the `models` input.
   MODELS: >-
     openai:gpt-image-2
-    openai:gpt-image-2.5
+    openai:gpt-image-2.5-flare
+    openai:gpt-image-1-mini
     google:gemini-3.1-flash-image-preview
     xai:grok-imagine-image
     fal:fal-ai/bytedance/seedream/v5/edit

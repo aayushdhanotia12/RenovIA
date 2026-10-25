@@ -50,7 +50,7 @@ class OpenAIImages(Provider):
     `input_fidelity=high` asks the model to keep the input's details where it supports it."""
     key_env, name = "OPENAI_API_KEY", "openai"
 
-    def __init__(self, model: str, quality: str = "high") -> None:
+    def __init__(self, model: str, quality: str = "medium") -> None:  # high costs ~3x medium; compare by eye first
         super().__init__(model)
         self.quality = quality
 
