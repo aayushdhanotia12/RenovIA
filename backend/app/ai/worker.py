@@ -58,3 +58,24 @@ class WorkerLighting:
         if arr.ndim != 3 or arr.shape[2] != 3 or not np.isfinite(arr).all():
             raise ModelError(f"unexpected lighting shape {arr.shape}")
         return arr.astype(np.float32)
+
+    def intrinsics(self, image_bgr: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Marigold's full split of an image (albedo, diffuse shading, non-diffuse residual; linear
+        RGB, the image's size): renderer/light_transfer.py takes a generated image's light from it."""
+        headers = {"Authorization": f"Bearer {self.token}", "Content-Type": "image/jpeg"}
+        try:
+            with httpx.Client(timeout=self.timeout_s, transport=self.transport) as client:
+                r = client.post(f"{self.url}/intrinsics", content=_jpeg(image_bgr, max_side=2048), headers=headers)
+        except httpx.HTTPError as e:
+            raise ModelError(f"model worker unreachable: {e}") from e
+        if r.status_code >= 400:
+            raise ModelError(f"model worker error {r.status_code}: {r.text[:200]}")
+        try:
+            parts = np.load(io.BytesIO(r.content), allow_pickle=False)
+            out = [parts[k].astype(np.float32) for k in ("albedo", "shading", "residual")]
+        except (ValueError, KeyError) as e:
+            raise ModelError("model worker answered without albedo, shading and residual") from e
+        h, w = image_bgr.shape[:2]
+        if any(a.ndim != 3 or a.shape[2] != 3 or not np.isfinite(a).all() for a in out):
+            raise ModelError("unexpected intrinsics shapes")
+        return tuple(cv2.resize(a, (w, h), interpolation=cv2.INTER_LINEAR) for a in out)

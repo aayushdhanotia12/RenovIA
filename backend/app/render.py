@@ -95,9 +95,12 @@ def edge_shape(profile: dict) -> str:
 def render_design(photo_bgr: np.ndarray, plans: list[SurfacePlan], countertop: Finish, splash: Finish | None,
                   cache_dir: Path, options: RenderOptions = V3, profile: dict | None = None,
                   focal_px: float | None = None, light: np.ndarray | None = None,
+                  product_layers: dict | None = None,
                   ) -> tuple[np.ndarray, list[dict], dict[str, np.ndarray]]:
     """`light`: the photo's diffuse shading from a lighting model, at the photo's size
-    (renderer.composite.light_from_model); without it the light is estimated from the photo."""
+    (renderer.composite.light_from_model); without it the light is estimated from the photo.
+    `product_layers`, when given, receives the products' albedo as laid on the photo and the
+    edge blend (`albedo`, `alpha`), photo-sized, for renderer/light_transfer.py."""
     profile = profile or DEFAULT_PROFILE
     out = photo_bgr.copy()
     layers: list[dict] = []
@@ -116,6 +119,7 @@ def render_design(photo_bgr: np.ndarray, plans: list[SurfacePlan], countertop: F
             glossy=style["glossy"], shading_sigma=style["shading_sigma"], focal_px=focal_px,
         )
         faces = None
+        layer: dict | None = {} if product_layers is not None else None
         if plan.surface_class == "countertop":
             surface.gloss = gloss_for(finish)
             wall = next((w for w in walls if w.run_id == plan.run_id), walls[0] if walls else None)
@@ -133,14 +137,18 @@ def render_design(photo_bgr: np.ndarray, plans: list[SurfacePlan], countertop: F
                     photo_lum=cv2.cvtColor(photo_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32))
             out, mask = composite_surface(out, surface, tex, mask=plan.mask, options=options, original_bgr=photo_bgr,
                                           tex_px_per_mm=PX_PER_MM, tex_origin_mm=(pad, pad), faces=faces,
-                                          light=light)
+                                          light=light, layers_out=layer)
         else:
             surface.glare_cap = 1.5  # walls: light pools under the cabinets are real light, keep them
             tex = texture_for(finish, plan.width_mm, plan.height_mm, cache_dir)
             out, mask = composite_surface(out, surface, tex, mask=plan.mask, options=options, original_bgr=photo_bgr,
-                                          light=light)
+                                          light=light, layers_out=layer)
         masks[plan.surface_id] = mask
         claimed |= mask > 0
+        if layer is not None:  # later surfaces are drawn over earlier ones, so they win here too
+            a = layer["alpha"][..., None]
+            product_layers["albedo"] = layer["albedo"] * a + product_layers.get("albedo", 0.0) * (1 - a)
+            product_layers["alpha"] = np.maximum(product_layers.get("alpha", 0.0), layer["alpha"])
         layer_faces = {}
         if faces is not None and faces.count():
             layer_faces = {"edge_polygon": mask_polygon(faces.mask), "edge_kind": faces.kind,

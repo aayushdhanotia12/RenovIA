@@ -479,7 +479,8 @@ def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.n
                       exposure: float = 0.92, mask: np.ndarray | None = None,
                       options: RenderOptions = V3, original_bgr: np.ndarray | None = None,
                       tex_px_per_mm: float | None = None, tex_origin_mm: tuple[float, float] = (0.0, 0.0),
-                      faces=None, light: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+                      faces=None, light: np.ndarray | None = None,
+                      layers_out: dict | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Return (new photo, mask) with one surface replaced by the finish texture.
 
     `photo_bgr` is the image so far (earlier surfaces already replaced: reflections
@@ -494,6 +495,9 @@ def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.n
     `light`, when given, is the photo's diffuse shading from a lighting model (linear RGB,
     photo-sized; see light_from_model): the room's light without the old surface's colour or
     shine. It replaces the estimate from the photo's own brightness and the glare split.
+    `layers_out`, when given, receives the product's albedo as laid on the photo (linear RGB)
+    and the edge blend (`albedo`, `alpha`), for a later pass that relights it
+    (renderer/light_transfer.py) without changing the pattern.
     """
     original = photo_bgr if original_bgr is None else original_bgr
     h, w = photo_bgr.shape[:2]
@@ -574,6 +578,9 @@ def composite_surface(photo_bgr: np.ndarray, surface: Surface, texture_bgr: np.n
         alpha = cv2.GaussianBlur(mask.astype(np.float32) / 255.0, (0, 0), 0.8)
         alpha[mask == 0] = 0.0  # feather inward only: never repaint outside the mask
     out = relit_bgr * alpha[..., None] + photo_bgr.astype(np.float32) * (1 - alpha[..., None])
+    if layers_out is not None:
+        layers_out["albedo"] = np.where((mask > 0)[..., None], albedo, 0.0).astype(np.float32)
+        layers_out["alpha"] = alpha.astype(np.float32)
     return np.clip(np.round(out), 0, 255).astype(np.uint8), mask
 
 

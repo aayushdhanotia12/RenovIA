@@ -45,6 +45,17 @@ class WorkerLightingTests(unittest.TestCase):
         self.assertEqual((seen["auth"], seen["type"]), ("Bearer s3cret", "image/jpeg"))
         self.assertEqual((light.shape, light.dtype), ((40, 60, 3), np.float32))
 
+    def test_intrinsics_come_back_as_albedo_shading_and_residual_at_the_image_size(self):
+        def handler(request):
+            self.assertTrue(request.url.path.endswith("/intrinsics"))
+            buf = io.BytesIO()
+            np.savez(buf, **{k: np.full((60, 90, 3), v, np.float16) for k, v in
+                             (("albedo", 0.5), ("shading", 1.2), ("residual", 0.01))})
+            return httpx.Response(200, content=buf.getvalue())
+        worker = WorkerLighting("http://worker", "s3cret", transport=httpx.MockTransport(handler))
+        albedo, shading, residual = worker.intrinsics(np.zeros((120, 180, 3), np.uint8))
+        self.assertEqual((albedo.shape, float(shading[0, 0, 0])), ((120, 180, 3), 1.2001953125))
+
     def test_a_refused_or_garbled_answer_is_a_model_error_so_the_render_falls_back(self):
         for response in (httpx.Response(401, text="unauthorised"), httpx.Response(200, content=b"not an array"),
                          httpx.Response(200, content=npy(np.zeros((40, 60), np.float16)))):

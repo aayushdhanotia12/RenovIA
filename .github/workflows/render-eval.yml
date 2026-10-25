@@ -1,0 +1,83 @@
+# Render bake-off: image models as "photographers" of our composite, judged on realism and on
+# whether the stone stays the Kober product (research/render_eval/run.py).
+# Started by hand (Actions > Render bake-off > Run workflow) or by pushing the `run-render-eval`
+# branch. A model runs only when its key is set as a repository secret: OPENAI_API_KEY,
+# GEMINI_API_KEY, FAL_KEY, XAI_API_KEY. Results go to the `render-eval-results` branch (one
+# folder per run) and to the run's artifacts. Only the repo's sample photos are used: never a
+# customer's photo, since the repository and its results are public.
+name: Render bake-off
+
+on:
+  push:
+    branches: [run-render-eval]
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "kind:model list (see research/render_eval/run.py)"
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  # The default line-up; each entry is skipped when its key is missing. Model ids are provisional
+  # until the October 2026 model research is in; override them with the `models` input.
+  MODELS: >-
+    openai:gpt-image-2
+    openai:gpt-image-2.5
+    google:gemini-3.1-flash-image-preview
+    xai:grok-imagine-image
+    fal:fal-ai/bytedance/seedream/v5/edit
+    fal:fal-ai/flux-2/edit
+    fal:fal-ai/qwen-image-edit-2511
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      FAL_KEY: ${{ secrets.FAL_KEY }}
+      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+          pip install -r requirements.txt
+          pip install diffusers transformers accelerate huggingface_hub
+      - name: Build the inputs (our composite of the sample kitchen in four finishes)
+        run: python research/render_eval/inputs.py --out research/render_eval/inputs
+      - name: Run the models
+        run: |
+          python research/render_eval/run.py --inputs research/render_eval/inputs --out research/render_eval/results \
+            --models ${{ inputs.models || env.MODELS }}
+      - name: Keep the results as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-eval-results
+          path: research/render_eval/results
+      - name: Publish the results to the render-eval-results branch
+        if: always()
+        run: |
+          set -e
+          RUN="$(date -u +%Y%m%dT%H%MZ)"
+          git config user.name "render-eval bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch origin render-eval-results:render-eval-results; then :; else
+            EMPTY="$(git hash-object -t tree /dev/null)"
+            git branch render-eval-results "$(git commit-tree "$EMPTY" -m 'Render bake-off results')"
+          fi
+          git worktree add /tmp/pub render-eval-results
+          mkdir -p "/tmp/pub/$RUN"
+          cp -r research/render_eval/results/. "/tmp/pub/$RUN/" || true
+          cd /tmp/pub
+          git add -A
+          git commit -m "Render bake-off $RUN" || exit 0
+          git push origin render-eval-results

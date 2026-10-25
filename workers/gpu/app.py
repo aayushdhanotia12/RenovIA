@@ -7,6 +7,9 @@ worker is unreachable.
 
     POST /lighting   body: the photo (JPEG/PNG)  ->  .npy float16 H x W x 3, linear diffuse shading
                      (Marigold-IID-Lighting v1-1: the room's light without surfaces' colour or shine)
+    POST /intrinsics body: an image  ->  .npz float16 albedo, shading, residual (H x W x 3, linear):
+                     the same model's full split, used to take the light from a generated image
+                     while keeping our product's own albedo (renderer/light_transfer.py)
     GET  /health     which models are loaded, on which device
 
 Every request needs `Authorization: Bearer <RENOVAI_WORKER_TOKEN>`. Models load on first use.
@@ -53,11 +56,10 @@ class Lighting:
             kwargs.pop("variant", None)
             pipe = diffusers.MarigoldIntrinsicsPipeline.from_pretrained(LIGHTING_MODEL, **kwargs)
         self.pipe = pipe.to(self.device)
-        names = list(self.pipe.target_properties.get("target_names", ["albedo", "shading", "residual"]))
-        self.index = names.index("shading")
+        self.names = list(self.pipe.target_properties.get("target_names", ["albedo", "shading", "residual"]))
         self.lock = threading.Lock()
 
-    def __call__(self, image_bytes: bytes) -> np.ndarray:
+    def split(self, image_bytes: bytes) -> dict[str, np.ndarray]:
         import torch
         from PIL import Image
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -67,7 +69,10 @@ class Lighting:
         pred = np.asarray(pred.cpu().float() if hasattr(pred, "cpu") else pred, np.float32)
         if pred.ndim == 4 and pred.shape[1] == 3:
             pred = pred.transpose(0, 2, 3, 1)
-        return pred[self.index]
+        return {name: pred[i] for i, name in enumerate(self.names)}
+
+    def __call__(self, image_bytes: bytes) -> np.ndarray:
+        return self.split(image_bytes)["shading"]
 
 
 _models: dict[str, object] = {}
@@ -112,4 +117,21 @@ def create_app() -> Starlette:
         return Response(buf.getvalue(), media_type="application/octet-stream",
                         headers={"X-Model": LIGHTING_MODEL, "X-Seconds": f"{time.time() - t0:.2f}"})
 
-    return Starlette(routes=[Route("/health", health), Route("/lighting", lighting, methods=["POST"])])
+    async def intrinsics(request: Request):
+        if not authorised(request):
+            return JSONResponse({"detail": "unauthorised"}, status_code=401)
+        body = await request.body()
+        if not body or len(body) > MAX_UPLOAD:
+            return JSONResponse({"detail": "send one image up to 15 MB as the request body"}, status_code=400)
+        t0 = time.time()
+        try:
+            parts = model("lighting").split(body)
+        except Exception as e:  # noqa: BLE001 - report, don't crash the worker
+            return JSONResponse({"detail": f"{type(e).__name__}: {e}"}, status_code=500)
+        buf = io.BytesIO()
+        np.savez(buf, **{k: v.astype(np.float16) for k, v in parts.items()})
+        return Response(buf.getvalue(), media_type="application/octet-stream",
+                        headers={"X-Model": LIGHTING_MODEL, "X-Seconds": f"{time.time() - t0:.2f}"})
+
+    return Starlette(routes=[Route("/health", health), Route("/lighting", lighting, methods=["POST"]),
+                             Route("/intrinsics", intrinsics, methods=["POST"])])
